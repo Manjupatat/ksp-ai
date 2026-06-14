@@ -1,0 +1,6 @@
+{
+  "name": "KSP Crime Intelligence Hub",
+  "description": "Retro-futuristic cognitive criminology & intelligence terminal for Karnataka State Police, features English & Kannada AI voice assistant interaction, relationship network graphs, and trend forecasting.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
