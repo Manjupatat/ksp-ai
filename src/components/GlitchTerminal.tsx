@@ -36,6 +36,11 @@ import {
 import { FIRCase, OffenderProfile, NetworkNode, AuditLog, ChatMessage, Role, Language } from '../types';
 import { playTerminalBeep } from './AudioSynthesizer';
 import ForceDirectedNetwork from './ForceDirectedNetwork';
+import OperatorAssistHUD from './OperatorAssistHUD';
+import TrendsTabContent from './TrendsTabContent';
+import SociologicalTabContent from './SociologicalTabContent';
+import OffendersTabContent from './OffendersTabContent';
+import IntelligenceHUD from './IntelligenceHUD';
 
 interface GlitchTerminalProps {
   operatorId?: string;
@@ -46,6 +51,7 @@ export default function GlitchTerminal({ operatorId = 'IA-GOWDA-7301' }: GlitchT
   const [activeTab, setActiveTab] = useState<'chat' | 'network' | 'trends' | 'sociological' | 'offenders' | 'audit'>('chat');
   const [role, setRole] = useState<Role>('INVESTIGATOR');
   const [lang, setLang] = useState<Language>('EN');
+  const [activePanel, setActivePanel] = useState<'console' | 'intel'>('console');
   
   // Custom Role Authentication Input Simulation
   const [authCode, setAuthCode] = useState('');
@@ -76,6 +82,7 @@ export default function GlitchTerminal({ operatorId = 'IA-GOWDA-7301' }: GlitchT
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [selectedCase, setSelectedCase] = useState<string>("FIR-2026-105");
   const [selectedOffender, setSelectedOffender] = useState<string>("OFF-8092");
+  const [showHandbook, setShowHandbook] = useState(false);
   
   // Local Stats Slider state
   const [urbanStressParam, setUrbanStressParam] = useState<number>(34);
@@ -368,82 +375,274 @@ export default function GlitchTerminal({ operatorId = 'IA-GOWDA-7301' }: GlitchT
     URL.revokeObjectURL(url);
   };
 
+  // Reusable High-Fidelity CSV Exporter Utility
+  const exportToCSV = (data: any[], headers: string[], rowMapper: (item: any) => string[], filename: string) => {
+    playTerminalBeep('success');
+    
+    const escapeField = (val: any) => {
+      if (val === undefined || val === null) return '';
+      let str = String(val);
+      // Escape double quotes
+      str = str.replace(/"/g, '""');
+      // Wrap field in quotes if it contains commas, newlines, or quotes
+      if (str.includes(',') || str.includes('\n') || str.includes('"')) {
+        return `"${str}"`;
+      }
+      return str;
+    };
+
+    const csvRows = [
+      headers.join(','),
+      ...data.map(item => rowMapper(item).map(escapeField).join(','))
+    ];
+
+    const blob = new Blob([csvRows.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  // Export Active Chat Feed as CSV
+  const exportChatAsCSV = () => {
+    const headers = ['Message ID', 'Sender', 'Timestamp', 'Message Text', 'Evidence References'];
+    exportToCSV(
+      messages,
+      headers,
+      (m) => [
+        m.id,
+        m.sender.toUpperCase(),
+        m.timestamp,
+        m.text,
+        m.evidenceTrail ? m.evidenceTrail.join(' | ') : ''
+      ],
+      `KSP_CHATHISTORY_${role}_${Date.now()}.csv`
+    );
+  };
+
+  // Export Complete Registered FIR Cases Directory as CSV
+  const exportCasesAsCSV = () => {
+    const headers = [
+      'FIR ID', 'District', 'Police Station', 'Crime Category', 'Date', 'Time of Occurrence', 
+      'Status', 'Crime Description', 'Victim Name', 'Victim Age', 'Victim Gender', 
+      'Accused Name', 'Accused Age', 'Accused Risk Score', 'Repeat Offender', 'Latitude', 'Longitude', 'Address'
+    ];
+    exportToCSV(
+      MOCK_FIRS,
+      headers,
+      (f) => [
+        f.id,
+        f.district,
+        f.policeStation,
+        f.crimeCategory,
+        f.date,
+        f.timeOfOccurrence,
+        f.status,
+        f.crimeDescription,
+        f.victimDetails.name,
+        String(f.victimDetails.age),
+        f.victimDetails.gender,
+        f.accusedDetails.name,
+        String(f.accusedDetails.age),
+        String(f.accusedDetails.riskScore),
+        f.accusedDetails.repeatOffender ? 'TRUE' : 'FALSE',
+        String(f.location.lat),
+        String(f.location.lng),
+        f.location.address
+      ],
+      `KSP_FIR_CASES_DIRECTORY_${Date.now()}.csv`
+    );
+  };
+
+  // Export Active Offender Profile Directory as CSV
+  const exportOffendersAsCSV = () => {
+    const headers = ['Offender ID', 'Name', 'Alias', 'Age', 'Risk Score', 'Primary MO', 'Status', 'Associated Cases', 'Syndicate Allies'];
+    exportToCSV(
+      MOCK_OFFENDERS,
+      headers,
+      (o) => [
+        o.id,
+        o.name,
+        o.alias,
+        String(o.age),
+        String(o.riskScore),
+        o.primaryMO,
+        o.status,
+        o.associatedCrimes.join(' | '),
+        o.allies.join(' | ')
+      ],
+      `KSP_OFFENDER_REGISTRY_${Date.now()}.csv`
+    );
+  };
+
+  // Export Security Compliance Audit Logs as CSV
+  const exportAuditLogsAsCSV = () => {
+    const headers = ['Timestamp', 'Officer ID', 'Role Clearance', 'Activity Action', 'Status'];
+    exportToCSV(
+      auditLogs,
+      headers,
+      (l) => [
+        l.timestamp,
+        l.user,
+        l.role,
+        `${l.action} - ${l.details}`,
+        l.status
+      ],
+      `KSP_SECURITY_COMPLIANCE_AUDIT_${Date.now()}.csv`
+    );
+  };
+
   const activeBillingTerms = BI_LINGUAL_TERMS[lang];
   const activeFIRDetails = MOCK_FIRS.find(f => f.id === selectedCase) || MOCK_FIRS[0];
   const activeOffenderDetails = MOCK_OFFENDERS.find(o => o.id === selectedOffender) || MOCK_OFFENDERS[0];
 
   return (
-    <div className="min-h-screen relative font-mono text-[#00f0ff] p-4 bg-[#09090e] crt-screen select-none">
+    <div className="min-h-screen relative font-sans text-stone-200 p-3 sm:p-6 bg-[#090a10] crt-screen select-none">
       <div className="static-overlay" />
 
-      {/* HEADER BAR */}
-      <header className="border-b border-[#00f0ff]/40 pb-3 mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative">
+      {/* HIGH-PRECISION HEADER BAR */}
+      <header className="border-b border-slate-800/80 pb-4 mb-6 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 relative">
         <div className="relative">
           <div className="flex items-center gap-3">
-            <Shield className="w-8 h-8 text-[#ff007f] animate-pulse" />
-            <h1 className="text-xl md:text-2xl font-bold tracking-wider glitch-text text-white" data-text={activeBillingTerms.title}>
-              {activeBillingTerms.title}
-            </h1>
+            <Shield className="w-8 h-8 text-[#ff007f] animate-pulse filter drop-shadow-[0_0_8px_rgba(255,0,127,0.4)]" />
+            <div>
+              <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-white flex items-center gap-2 font-mono">
+                {activeBillingTerms.title}
+                <span className="text-[10px] bg-[#ff007f] text-white px-1.5 py-0.5 rounded font-mono font-bold animate-pulse">V2.4_ACTIVE</span>
+              </h1>
+              <p className="text-[10px] sm:text-xs text-stone-400 font-mono mt-0.5 tracking-wider uppercase">
+                {activeBillingTerms.subtitle}
+              </p>
+            </div>
           </div>
-          <p className="text-xs text-[#ff007f] font-mono mt-1 opacity-90 tracking-widest uppercase">
-            {activeBillingTerms.subtitle}
-          </p>
         </div>
 
-        {/* Global Action Toggles (Language & Role Matrix) */}
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Language Matrix Toggle */}
-          <div className="flex border border-[#00f0ff]/50 bg-black">
+        {/* Global Action Toggles (Language, Operational Clearance & Live Stratus Sync Telemetry) */}
+        <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto justify-start xl:justify-end">
+          
+          {/* Handbook Guide Toggle */}
+          <button
+            type="button"
+            onClick={() => { setShowHandbook(!showHandbook); playTerminalBeep('click'); }}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold font-sans transition-all flex items-center gap-1.5 cursor-pointer border ${
+              showHandbook 
+                ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/30' 
+                : 'bg-black/60 text-stone-400 border-slate-800/80 hover:border-slate-700'
+            }`}
+          >
+            <span className="w-2 h-2 rounded-full bg-yellow-500 inline-block text-center mr-0.5 animate-pulse" />
+            {lang === 'EN' ? "OPERATING PROTOCOLS" : "ಕಾರ್ಯಾಚರಣೆ ಕೈಪಿಡಿ"}
+          </button>
+
+          {/* Language Selection Grid */}
+          <div className="flex border border-slate-800/80 bg-black/60 rounded-lg p-0.5">
             <button 
+              type="button"
               onClick={() => { setLang('EN'); playTerminalBeep('click'); }} 
-              className={`px-3 py-1 text-xs font-bold transition-all ${lang === 'EN' ? 'bg-[#00f0ff] text-black font-extrabold' : 'hover:bg-[#00f0ff]/10 text-[#00f0ff]'}`}
+              className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${lang === 'EN' ? 'bg-[#00f0ff]/15 text-[#00f0ff]' : 'hover:bg-white/5 text-stone-400'}`}
             >
               EN
             </button>
             <button 
+              type="button"
               onClick={() => { setLang('KN'); playTerminalBeep('click'); }} 
-              className={`px-3 py-1 text-xs font-bold transition-all ${lang === 'KN' ? 'bg-[#00f0ff] text-black font-extrabold' : 'hover:bg-[#00f0ff]/10 text-[#00f0ff]'}`}
+              className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${lang === 'KN' ? 'bg-[#00f0ff]/15 text-[#00f0ff]' : 'hover:bg-white/5 text-stone-400'}`}
             >
               ಕನ್ನಡ (KN)
             </button>
           </div>
 
           {/* Secure Role Decrypt Matrix */}
-          <div className="flex items-center gap-2 border border-[#ff007f]/50 px-2 py-1 bg-black/60">
-            <span className="text-[10px] text-[#ff007f] font-semibold tracking-wider hidden sm:inline">
+          <div className="flex items-center gap-2 border border-slate-800/80 px-2.5 py-1.5 bg-black/60 rounded-lg">
+            <span className="text-[10px] text-stone-400 font-bold uppercase tracking-wider hidden md:inline">
               {activeBillingTerms.rolesSelect}
             </span>
             <select 
               value={role} 
+              disabled={isQuerying}
               onChange={(e) => changeRoleAndLog(e.target.value as Role)}
-              className="bg-black text-[#ff007f] text-xs font-bold border-none outline-none cursor-pointer focus:ring-0"
+              className="bg-transparent text-[#ff007f] text-xs font-bold border-none outline-none cursor-pointer focus:ring-0 font-mono py-0.5"
             >
-              <option value="INVESTIGATOR">IA SECURE (INVESTIGATOR)</option>
-              <option value="ANALYST">SCRB DATA (ANALYST)</option>
-              <option value="SUPERVISOR">POLICE COMMAND (SUPERVISOR)</option>
-              <option value="POLICYMAKER">STATE POLICY (POLICYMAKER)</option>
+              <option value="INVESTIGATOR">Clearance: INVESTIGATOR</option>
+              <option value="ANALYST">Clearance: ANALYST</option>
+              <option value="SUPERVISOR">Clearance: SUPERVISOR</option>
+              <option value="POLICYMAKER">Clearance: POLICYMAKER</option>
             </select>
           </div>
 
-          {/* Core Zoho Catalyst Sync Telemetry Node */}
-          <div className="flex items-center gap-1.5 border border-[#00f0ff]/30 px-3 py-1 bg-black/40 text-[11px]">
-            <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-ping" />
-            <span className="text-emerald-400 font-bold uppercase tracking-widest flex items-center gap-1">
-              <Cpu className="w-3.5 h-3.5" /> CATALYST SYNCED
+          {/* Core Catalyst Stratus Node Sync Indicator */}
+          <div className="flex items-center gap-1.5 border border-emerald-500/30 px-3 py-1 bg-black/45 text-[10.5px] rounded">
+            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+            <span className="text-emerald-400 font-bold uppercase tracking-widest flex items-center gap-1.5 font-mono">
+              <Cpu className="w-3.5 h-3.5" /> CATALYST_SYNC
             </span>
           </div>
+
         </div>
       </header>
 
-      {/* SECURE OVERRIDE FLASH ALARM */}
-      {securityOverrideFlash && (
-        <div className="mb-4 p-3 bg-[#ff007f] border-2 border-white text-white font-bold text-center flex items-center justify-center gap-2 uppercase animate-bounce">
-          <AlertTriangle className="w-6 h-6 animate-ping" /> SYSTEM CRITICAL WARNING: ENHANCED CYBERSECURITY SCREEN ACTIVE FOR POLICY LEVEL CLASSIFICATION
+      {/* CONDITIONAL OPERATIONAL HANDBOOK INTERPRETIVE OVERLAY */}
+      {showHandbook && (
+        <div className="mb-5 p-4 bg-[#11111a] border-l-4 border-yellow-500 text-stone-250 rounded-r font-sans shadow-md">
+          <h3 className="text-sm font-extrabold text-yellow-400 uppercase tracking-widest mb-1.5 font-mono">
+            KSP COGNITIVE TERM-HANDBOOK (OPERATOR MEM STATUS)
+          </h3>
+          <ul className="text-xs list-disc pl-5 flex flex-col gap-1.5 leading-relaxed">
+            <li>
+              <strong>Conversational Crime Query Desk (Speech & Voice)</strong>: Speak directly into the system using the physical Microphone trigger. Choose EN or KN as your baseline. The intelligent agent parses districts, case indices, and repeat recidivism offenders instantly.
+            </li>
+            <li>
+              <strong>Bilingual Speech & Synthesis Engine</strong>: Submitting queries returns localized speech responses. Under any response bubble, tap <span className="text-[#ff007f] font-bold">"Read Aloud (TTS)"</span> to generate real-time audio playback.
+            </li>
+            <li>
+              <strong>Spatiotemporal forecasting</strong>: Move the threat scale slider inside the Forecast window to simulate hyper-local security anomalies and security stress models.
+            </li>
+            <li>
+              <strong>Security Handshake Clearance</strong>: Selecting different clearances locks/unlocks system actions. Every classification switch is backed by a Zoho catalyst transaction audit log.
+            </li>
+          </ul>
         </div>
       )}
 
-      {/* CORE SHELL NAVIGATION BAR */}
-      <nav className="flex flex-wrap gap-2 mb-6">
+      {/* SECURE OVERRIDE FLASH ALARM */}
+      {securityOverrideFlash && (
+        <div className="mb-5 p-3 bg-red-600 border border-white text-white font-bold text-center flex items-center justify-center gap-2 uppercase animate-pulse text-xs sm:text-sm rounded">
+          <AlertTriangle className="w-5 h-5 animate-bounce shrink-0" /> SECURITY OVERRIDE DETECTED: ELEVATED SYSTEM ACCESS ACTIVE. AUDITED BY POLICE COMMISSARY.
+        </div>
+      )}
+
+      {/* PORTABLE VIEWS TOGGLE MATRIX FOR MOBILE DEVICES */}
+      <div className="lg:hidden grid grid-cols-2 gap-2 mb-4 w-full">
+        <button
+          type="button"
+          onClick={() => { setActivePanel('console'); playTerminalBeep('click'); }}
+          className={`py-3 px-3 font-bold text-xs uppercase tracking-widest border rounded-xl transition-all text-center flex items-center justify-center gap-1.5 cursor-pointer ${
+            activePanel === 'console'
+              ? 'bg-[#00f0ff]/10 text-[#00f0ff] border-[#00f0ff]/30 shadow-[0_0_10px_rgba(3,240,255,0.15)]'
+              : 'bg-stone-950/60 text-stone-400 border-slate-800'
+          }`}
+        >
+          📟 {lang === 'EN' ? 'PRIMARY TERMINAL' : 'ಪ್ರಾಥಮಿಕ ಕನ್ಸೋಲ್'}
+        </button>
+        <button
+          type="button"
+          onClick={() => { setActivePanel('intel'); playTerminalBeep('click'); }}
+          className={`py-3 px-3 font-bold text-xs uppercase tracking-widest border rounded-xl transition-all text-center flex items-center justify-center gap-1.5 cursor-pointer ${
+            activePanel === 'intel'
+              ? 'bg-[#ff007f]/10 text-[#ff007f] border-[#ff007f]/30 shadow-[0_0_10px_rgba(255,0,127,0.15)]'
+              : 'bg-stone-950/60 text-stone-400 border-slate-800'
+          }`}
+        >
+          🗃️ {lang === 'EN' ? 'INTEL REGISTER' : 'ಮಾಹಿತಿ ರೆಜಿಸ್ಟರ್'}
+        </button>
+      </div>
+
+      {/* CORE SHELL NAVIGATION BAR WITH DENSE RESPONSIVENESS */}
+      <nav className="flex flex-wrap gap-1.5 mb-6 p-1.5 bg-[#11121d]/50 rounded-xl border border-slate-800/60 backdrop-blur-md">
         {[
           { tabName: 'chat', label: activeBillingTerms.chatTab, icon: Terminal },
           { tabName: 'network', label: activeBillingTerms.networkTab, icon: Users },
@@ -457,15 +656,16 @@ export default function GlitchTerminal({ operatorId = 'IA-GOWDA-7301' }: GlitchT
           return (
             <button
               key={item.tabName}
+              type="button"
               onClick={() => { playTerminalBeep('click'); setActiveTab(item.tabName as any); }}
-              className={`flex items-center gap-2 px-4 py-2 border text-xs tracking-wider uppercase transition-all font-bold ${
+              className={`flex items-center gap-2 px-3.5 py-2.5 text-xs tracking-wider uppercase transition-all font-bold cursor-pointer rounded-lg flex-grow md:flex-grow-0 text-center justify-center ${
                 isActive 
-                  ? 'bg-[#ff007f] border-[#ff007f] text-white shadow-[0_0_12px_rgba(255,0,127,0.8)]' 
-                  : 'bg-[#11111a] border-[#00f0ff]/30 hover:border-[#00f0ff]/90 text-[#00f0ff]'
+                  ? 'bg-gradient-to-r from-[#ff007f] to-[#ff007f]/85 text-white shadow-[0_0_12px_rgba(255,0,127,0.45)]' 
+                  : 'bg-stone-950/60 border border-transparent hover:border-stone-800 text-stone-400 hover:text-[#00f0ff]'
               }`}
             >
-              <IconComponent className="w-4 h-4" />
-              {item.label}
+              <IconComponent className="w-3.5 h-3.5" />
+              <span>{item.label}</span>
             </button>
           );
         })}
@@ -475,8 +675,8 @@ export default function GlitchTerminal({ operatorId = 'IA-GOWDA-7301' }: GlitchT
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
         {/* VIEWPORTS / TABS PANELS (8 cols on lg) */}
-        <section className="lg:col-span-8 border-2 border-[#00f0ff]/50 bg-[#11111a]/80 p-5 min-h-[580px] relative flex flex-col justify-between">
-          <div className="absolute top-2 right-2 flex items-center gap-2 text-[10px] text-[#00f0ff]/50 font-mono">
+        <section className={`lg:col-span-8 border border-slate-800 bg-[#0c0d15]/85 rounded-2xl shadow-2xl p-4 sm:p-5 min-h-[580px] relative flex flex-col justify-between backdrop-blur-md ${activePanel === 'console' ? 'block' : 'hidden lg:flex'}`}>
+          <div className="absolute top-3 right-3 flex items-center gap-2 text-[10px] text-stone-400/60 font-mono">
             <span>GRID-REF-PORT_A</span>
             <div className="w-1.5 h-1.5 bg-[#00f0ff] rounded-full animate-ping" />
           </div>
@@ -486,51 +686,45 @@ export default function GlitchTerminal({ operatorId = 'IA-GOWDA-7301' }: GlitchT
             <div className="flex flex-col h-full justify-between gap-4">
               
               {/* Active System Mode Description Bar */}
-              <div className="bg-[#ff007f]/10 border border-[#ff007f]/40 p-2 text-xs flex justify-between items-center">
+              <div className="bg-[#ff007f]/5 border border-[#ff007f]/20 rounded-lg p-2.5 text-xs flex justify-between items-center">
                 <span className="text-[#ff007f] font-bold uppercase tracking-wider flex items-center gap-1.5">
                   <Activity className="w-4 h-4 animate-pulse" /> [ACTIVE COGNITIVE RADAR]: ENGLISH-KANNADA AUTO-TRANSLATION MATRIX SECURED
                 </span>
-                <span className="text-xs text-stone-400 font-mono">MESSAGES LOADED: {messages.length}</span>
+                <span className="text-xs text-stone-400 font-mono font-bold">MESSAGES LOADED: {messages.length}</span>
               </div>
 
               {/* Chat Window */}
-              <div className="border border-[#00f0ff]/30 bg-black/80 p-4 h-[390px] overflow-y-auto flex flex-col gap-4 relative">
+              <div className="border border-slate-800/80 bg-stone-950/40 rounded-xl p-4 h-[390px] overflow-y-auto flex flex-col gap-4 relative">
                 {/* Visual sci-fi watermarks */}
-                <div className="absolute inset-0 bg-[linear-gradient(rgba(0,240,255,0.02)_1px,transparent_1px)] bg-[size:100%_16px] pointer-events-none" />
+                <div className="absolute inset-0 bg-[linear-gradient(rgba(0,240,255,0.01)_1px,transparent_1px)] bg-[size:100%_16px] pointer-events-none" />
                 
                 {messages.map((m) => (
                   <div 
                     key={m.id} 
-                    className={`p-3.5 max-w-[85%] relative border font-mono transition-all duration-300 ${
+                    className={`p-4 max-w-[85%] relative rounded-2xl transition-all duration-300 border ${
                       m.sender === 'user' 
-                        ? 'bg-[#00f0ff]/10 border-[#00f0ff]/80 self-end text-[#00f0ff] shadow-[0_0_8px_rgba(0,240,255,0.15)] md:mr-1' 
-                        : 'bg-[#ff007f]/5 border-[#ff007f]/40 self-start text-stone-200 shadow-[0_0_8px_rgba(255,0,127,0.1)] md:ml-1'
+                        ? 'bg-[#00f0ff]/5 border-[#00f0ff]/20 self-end text-[#00f0ff] rounded-tr-none shadow-[0_4px_12px_rgba(0,240,255,0.03)] md:mr-1' 
+                        : 'bg-[#ff007f]/5 border-[#ff007f]/20 self-start text-stone-200 rounded-tl-none shadow-[0_4px_12px_rgba(255,0,127,0.03)] md:ml-1'
                     }`}
                   >
-                    {/* Retro Corner brackets to make it look extremely high-tech and crafted */}
-                    <div className="absolute -top-[1.5px] -left-[1.5px] w-2 h-2 border-t-2 border-l-2 border-inherit" />
-                    <div className="absolute -top-[1.5px] -right-[1.5px] w-2 h-2 border-t-2 border-r-2 border-inherit" />
-                    <div className="absolute -bottom-[1.5px] -left-[1.5px] w-2 h-2 border-b-2 border-l-2 border-inherit" />
-                    <div className="absolute -bottom-[1.5px] -right-[1.5px] w-2 h-2 border-b-2 border-r-2 border-inherit" />
-
-                    <div className="flex justify-between items-center gap-2 border-b border-white/10 pb-1.5 mb-2.5 text-[9px] font-bold tracking-widest opacity-80 select-none">
-                      <span className="flex items-center gap-1.5 uppercase font-mono">
+                    <div className="flex justify-between items-center gap-2 border-b border-white/5 pb-2 mb-2 text-[10px] font-bold tracking-wider opacity-80 select-none">
+                      <span className="flex items-center gap-1.5 uppercase font-[#ff007f]">
                         {m.sender === 'user' ? (
                           <>
                             <User className="w-3.5 h-3.5 text-[#00f0ff]" />
-                            <span className="text-[#00f0ff]">INVESTIGATOR // ADMIN</span>
+                            <span className="text-[#00f0ff]">INVESTIGATOR</span>
                           </>
                         ) : (
                           <>
                             <Terminal className="w-3.5 h-3.5 text-[#ff007f] animate-pulse" />
-                            <span className="text-[#ff007f]">KSP_AI_COGNITIVE // RESPONSE</span>
+                            <span className="text-[#ff007f]">KSP COGNITIVE AI</span>
                           </>
                         )}
                       </span>
-                      <span className="text-stone-500 font-mono">{m.timestamp}</span>
+                      <span className="text-stone-500 font-mono text-[9px]">{m.timestamp}</span>
                     </div>
 
-                    <p className="font-mono whitespace-pre-wrap leading-relaxed text-xs sm:text-xs tracking-wide selection:bg-[#ff007f] selection:text-white">{m.text}</p>
+                    <p className="font-sans whitespace-pre-wrap leading-relaxed text-[13px] tracking-normal select-text selection:bg-[#ff007f] selection:text-white text-stone-200">{m.text}</p>
 
                     {/* Speech synthesis prompt read button */}
                     {m.sender === 'assistant' && (
@@ -659,15 +853,28 @@ export default function GlitchTerminal({ operatorId = 'IA-GOWDA-7301' }: GlitchT
                       <Send className="w-3.5 h-3.5" /> SEND
                     </button>
 
-                    {/* PDF Export trigger */}
-                    <button 
-                      type="button"
-                      onClick={downloadSessionTranscript}
-                      className="px-4 py-2.5 bg-[#ff007f]/5 border-2 border-[#ff007f]/60 text-[#ff007f] font-bold text-xs hover:bg-[#ff007f] hover:text-white hover:shadow-[0_0_12px_rgba(255,0,127,0.4)] cursor-pointer transition-all duration-300 flex items-center gap-1.5"
-                      title="Compile & Download decrypted transcripts"
-                    >
-                      <Download className="w-4 h-4" /> Export
-                    </button>
+                     {/* Modern Multi-Format Export Group */}
+                    <div className="flex rounded bg-black/60 border-2 border-slate-700/80 p-0.5 items-center">
+                      <button 
+                        type="button"
+                        onClick={downloadSessionTranscript}
+                        className="px-2.5 py-1.5 text-stone-300 hover:text-white hover:bg-slate-900 rounded transition-all text-xs font-bold flex items-center gap-1 cursor-pointer"
+                        title="Export Conversation as Text Transcript"
+                      >
+                        <Download className="w-3.5 h-3.5 text-[#ff007f]" />
+                        <span>TXT</span>
+                      </button>
+                      <div className="w-[1px] h-4 bg-slate-700 mx-1" />
+                      <button 
+                        type="button"
+                        onClick={exportChatAsCSV}
+                        className="px-2.5 py-1.5 text-stone-300 hover:text-white hover:bg-slate-900 rounded transition-all text-xs font-bold flex items-center gap-1 cursor-pointer"
+                        title="Export Conversation as CSV Spreadsheet"
+                      >
+                        <Download className="w-3.5 h-3.5 text-[#00f0ff]" />
+                        <span>CSV</span>
+                      </button>
+                    </div>
                   </div>
                 </form>
               </div>
@@ -892,11 +1099,22 @@ export default function GlitchTerminal({ operatorId = 'IA-GOWDA-7301' }: GlitchT
           {/* TAB 5: HABITUAL OFFENDER PROFILING */}
           {activeTab === 'offenders' && (
             <div className="flex flex-col gap-4">
-              <div className="bg-[#ff007f]/10 border border-[#ff007f]/40 p-2 text-xs flex justify-between items-center text-[#ff007f]">
+              <div className="bg-[#ff007f]/10 border border-[#ff007f]/40 p-2 text-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-[#ff007f]">
                 <span className="font-bold flex items-center gap-1.5">
                   <Shield className="w-4 h-4 animate-pulse" /> HIGH-RISK HABITUAL OFFENDER REGISTRY MODULE
                 </span>
-                <span className="text-xs bg-black text-[#00f0ff] font-mono px-2 py-0.5">MONITORED SUBJECTS: {MOCK_OFFENDERS.length}</span>
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end font-mono">
+                  <button
+                    type="button"
+                    onClick={exportOffendersAsCSV}
+                    className="px-2.5 py-1 bg-[#ff007f] text-white rounded text-[10px] font-bold hover:bg-white hover:text-black transition-all flex items-center gap-1 cursor-pointer font-sans"
+                    title="Export all offender profiles to CSV Spreadsheet"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>EXPORT REGISTRY (CSV)</span>
+                  </button>
+                  <span className="text-xs bg-black text-[#00f0ff] px-2 py-1 rounded">MONITORED SUBJECTS: {MOCK_OFFENDERS.length}</span>
+                </div>
               </div>
 
               {/* Selector grid */}
@@ -993,11 +1211,22 @@ export default function GlitchTerminal({ operatorId = 'IA-GOWDA-7301' }: GlitchT
           {/* TAB 6: AUTH AUDIT LOG READER */}
           {activeTab === 'audit' && (
             <div className="flex flex-col gap-4">
-              <div className="bg-[#ff007f]/10 border border-[#ff007f]/40 p-2 text-xs flex justify-between items-center text-[#ff007f]">
+              <div className="bg-[#ff007f]/10 border border-[#ff007f]/40 p-2 text-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-[#ff007f]">
                 <span className="font-bold flex items-center gap-1.5 uppercase">
                   <Shield className="w-4 h-4" /> KSP DATA PROTECTION AUDIT SECURE SHEET (ROLE COMPLIANCE ACTIVE)
                 </span>
-                <span className="text-xs bg-black text-emerald-400 font-mono px-2 py-0.5">CATALYST SECURITY SHARDS SECURE: 100%</span>
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+                  <button
+                    type="button"
+                    onClick={exportAuditLogsAsCSV}
+                    className="px-2.5 py-1.5 bg-[#ff007f] text-white rounded text-[10px] font-bold hover:bg-white hover:text-black transition-all flex items-center gap-1 cursor-pointer"
+                    title="Export audits to CSV Spreadsheet"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>EXPORT COMPLIANCE (CSV)</span>
+                  </button>
+                  <span className="text-[10px] bg-black text-emerald-400 font-mono px-2 py-1.5 rounded">CATALYST SECURITY SECURE: 100%</span>
+                </div>
               </div>
 
               {/* Logs table structure */}
@@ -1047,14 +1276,25 @@ export default function GlitchTerminal({ operatorId = 'IA-GOWDA-7301' }: GlitchT
 
         </section>
 
-        {/* SIDE CONSOLE HUD PANELS (4 cols on lg) */}
-        <aside className="lg:col-span-4 flex flex-col gap-6">
+        {/* SIDE CONSOLE HUD PANELS (4 cols on lg and conditionally displayed on mobile) */}
+        <aside className={`lg:col-span-4 flex flex-col gap-6 ${activePanel === 'intel' ? 'block' : 'hidden lg:flex'}`}>
           
           {/* SIDE CARD A: REGISTERED CASE INVENTORY SHEETS */}
-          <div className="border-2 border-[#00f0ff]/50 bg-[#11111a] p-4 flex flex-col gap-3">
-            <h3 className="text-xs uppercase text-[#00f0ff] font-extrabold border-b border-[#00f0ff]/30 pb-1 flex items-center gap-1.5 tracking-wider">
-              <Database className="w-4 h-4 text-[#ff007f]" /> STATE REGISTERED FIR INVENTORY
-            </h3>
+          <div className="border border-slate-800/80 bg-[#11111a] rounded-xl shadow p-4 flex flex-col gap-3">
+            <div className="flex justify-between items-center border-b border-stone-800/80 pb-2">
+              <h3 className="text-xs uppercase text-[#00f0ff] font-extrabold flex items-center gap-1.5 tracking-wider">
+                <Database className="w-4 h-4 text-[#ff007f]" /> STATE REGISTERED FIR INVENTORY
+              </h3>
+              <button
+                type="button"
+                onClick={exportCasesAsCSV}
+                className="px-2 py-1 rounded border border-[#00f0ff]/30 bg-black text-[#00f0ff] text-[9px] font-bold hover:bg-[#00f0ff]/10 transition-all cursor-pointer flex items-center gap-0.5"
+                title="Download FIR Case List in CSV Format"
+              >
+                <Download className="w-3 h-3 text-[#00f0ff]" />
+                <span>EXPORT (CSV)</span>
+              </button>
+            </div>
             
             {/* Scrollable list search */}
             <div className="flex flex-col gap-2 max-h-[220px] overflow-y-auto">
