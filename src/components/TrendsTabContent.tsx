@@ -1,5 +1,35 @@
-import React from 'react';
-import { Activity, Clock, TrendingUp, Cpu, Info, Sliders, AlertTriangle } from 'lucide-react';
+import React, { useState } from 'react';
+import { 
+  Activity, 
+  Clock, 
+  TrendingUp, 
+  Cpu, 
+  Info, 
+  Sliders, 
+  AlertTriangle, 
+  BarChart2, 
+  ShieldAlert,
+  Sparkles,
+  Zap
+} from 'lucide-react';
+import { 
+  ResponsiveContainer, 
+  AreaChart, 
+  Area, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  Legend, 
+  RadarChart, 
+  PolarGrid, 
+  PolarAngleAxis, 
+  PolarRadiusAxis, 
+  Radar,
+  BarChart,
+  Bar,
+  Cell
+} from 'recharts';
 import { playTerminalBeep } from './AudioSynthesizer';
 
 interface TrendsTabContentProps {
@@ -7,7 +37,7 @@ interface TrendsTabContentProps {
   forecastingMultiplier: number;
   setForecastingMultiplier: (val: number) => void;
   SPATIOTEMPORAL_CLUSTERS: { hours: string; title: string; primaryCategory: string }[];
-  TIME_TRENDS_DATA: { month: string; cyber: number; burglary: number }[];
+  TIME_TRENDS_DATA: { month: string; cyber: number; burglary: number; smuggling?: number; violence?: number }[];
 }
 
 export default function TrendsTabContent({
@@ -17,140 +47,126 @@ export default function TrendsTabContent({
   SPATIOTEMPORAL_CLUSTERS,
   TIME_TRENDS_DATA
 }: TrendsTabContentProps) {
-  
-  // Custom interactive click handler for graphs to play satisfy retro tones
-  const triggerGraphInfo = (month: string, cyber: number, burglary: number) => {
-    playTerminalBeep('chirp');
+  const [activeChartMode, setActiveChartMode] = useState<'historical' | 'predicted'>('predicted');
+
+  // Play retro chime when changing chart mode
+  const toggleChartMode = (mode: 'historical' | 'predicted') => {
+    playTerminalBeep('success');
+    setActiveChartMode(mode);
+  };
+
+  // Process data based on active chart mode
+  const chartData = TIME_TRENDS_DATA.map(t => {
+    const mult = activeChartMode === 'predicted' ? forecastingMultiplier : 1;
+    return {
+      month: t.month,
+      cyber: Math.round(t.cyber * mult),
+      burglary: Math.round(t.burglary * mult),
+      smuggling: Math.round((t.smuggling || 50) * mult),
+      violence: Math.round((t.violence || 90) * mult),
+    };
+  });
+
+  // Hotspot radar-friendly structured data
+  const radarData = SPATIOTEMPORAL_CLUSTERS.map((c, i) => {
+    // Generate simulated weights for mapping on a multi-axis radar chart
+    const weightBase = 40 + (i * 15);
+    return {
+      window: c.hours,
+      Weight: Math.round(weightBase * forecastingMultiplier),
+      RiskIndex: Math.round((weightBase + 10) * (forecastingMultiplier * 0.95)),
+      Density: Math.round((weightBase - 5) * (forecastingMultiplier * 1.1))
+    };
+  });
+
+  // Custom tooltips styling for dark cyberpunk grid
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-[#0b0c16]/95 border-2 border-slate-800/90 rounded-xl p-3 shadow-[0_0_15px_rgba(0,240,255,0.15)] backdrop-blur-md text-xs font-mono select-none">
+          <p className="text-stone-300 font-bold border-b border-slate-800/80 pb-1 mb-2 tracking-wider flex items-center gap-1.5 uppercase">
+            <span className="w-2 h-2 rounded-full bg-[#00f0ff] animate-pulse" />
+            TIMESTEP_REF: <span className="text-[#00f0ff]">{label}</span>
+          </p>
+          <div className="flex flex-col gap-1.5">
+            {payload.map((entry: any, i: number) => (
+              <div key={i} className="flex justify-between items-center gap-5">
+                <span className="text-stone-400 capitalize text-[11px] flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-sm" style={{ backgroundColor: entry.color || entry.fill }} />
+                  {entry.name}:
+                </span>
+                <span className="font-extrabold text-[12px] tracking-widest text-white" style={{ color: entry.color || entry.fill }}>
+                  {entry.value} Casefiles
+                </span>
+              </div>
+            ))}
+          </div>
+          {activeChartMode === 'predicted' && (
+            <div className="mt-2 pt-1.5 border-t border-slate-800/80 text-[10px] text-[#ff007f] uppercase font-bold tracking-tighter">
+              ⚡ Simulated at {forecastingMultiplier.toFixed(1)}x Risk Coefficient
+            </div>
+          )}
+        </div>
+      );
+    }
+    return null;
   };
 
   return (
-    <div className="flex flex-col gap-5 font-sans" id="trends-temporal-predictive-matrix">
+    <div className="flex flex-col gap-6 font-sans" id="trends-temporal-predictive-matrix">
       
-      {/* Alert Ribbon */}
-      <div className="flex justify-between items-center bg-[#ff007f]/15 p-3 border border-[#ff007f]/40 rounded-md text-xs">
-        <span className="font-bold flex items-center gap-1.5 text-[#ff007f] font-mono tracking-wide uppercase">
-          <Activity className="w-4 h-4 animate-ping" />
-          {lang === 'EN' 
-            ? "AI FORECAST ENGINE & MONTHLY TEMPORAL FLUX RATE (KSP SCRB PROJECT_Y)" 
-            : "AI ಸಿಮ್ಯುಲೇಶನ್ ಇಂಜಿನ್ ಮತ್ತು ಮಾಸಿಕ ಅಪರಾಧ ಪ್ರವೃತ್ತಿಯ ಮುನ್ಸೂಚನೆ"}
-        </span>
-        <span className="text-[10px] bg-black text-[#ff007f] px-2 py-0.5 rounded border border-[#ff007f]/20 font-mono font-bold tracking-widest hidden md:inline">
-          ZIA AUTO_ML ENGINE MODEL
-        </span>
-      </div>
-
-      {/* Grid containing trends charting and dynamic sliders */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
-        
-        {/* Visual Chart Panel (Column span 7 on md, full on mobile) */}
-        <div className="md:col-span-7 bg-black/70 border border-[#00f0ff]/30 p-4 rounded-md flex flex-col justify-between min-h-[320px]">
+      {/* Dynamic Forecast Controller HUD Header */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center bg-[#11121d]/70 border border-slate-800/70 rounded-2xl p-4 shadow-xl backdrop-blur-md">
+        <div className="lg:col-span-4 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-[#ff007f]/10 border border-[#ff007f]/30 flex items-center justify-center text-[#ff007f] shrink-0">
+            <TrendingUp className="w-5 h-5 animate-pulse" />
+          </div>
           <div>
-            <span className="text-xs text-white font-bold uppercase tracking-widest block border-b border-white/10 pb-1.5 mb-2 font-mono">
-              {lang === 'EN' ? "Monthly Crime Dynamics" : "ಮಾಸಿಕ ಅಪರಾಧ ಸಂಪುಟ"} (CYBER vs BURGLARY)
-            </span>
-            <p className="text-[11px] text-stone-400 mb-4 leading-normal">
-              {lang === 'EN' 
-                ? "Compare local cyber crimes against physical burglaries across Bangalore sectors. Hover & click bars to audit coordinates." 
-                : "ಬೆಂಗಳೂರು ವಿಭಾಗಗಳಲ್ಲಿ ಸ್ಥಳೀಯ ಸೈಬರ್ ಅಪರಾಧಗಳನ್ನು ಮತ್ತು ಮನೆ ಕಳ್ಳತನಗಳನ್ನು ಹೋಲಿಕೆ ಮಾಡಿ."}
-            </p>
-          </div>
-
-          {/* SVG representation for retro yet modern glowing chart layout */}
-          <div className="relative py-2 flex-grow flex items-center justify-center">
-            <svg className="w-full h-[180px] overflow-visible" viewBox="0 0 300 150">
-              {/* Target lines and bounds */}
-              <line x1="30" y1="10" x2="290" y2="10" stroke="#1d1d2f" strokeWidth="1" strokeDasharray="3,3" />
-              <line x1="30" y1="60" x2="290" y2="60" stroke="#1d1d2f" strokeWidth="1" strokeDasharray="3,3" />
-              <line x1="30" y1="110" x2="290" y2="110" stroke="#1d1d2f" strokeWidth="1" strokeDasharray="3,3" />
-              <line x1="30" y1="130" x2="290" y2="130" stroke="#333" strokeWidth="1.5" />
-
-              {TIME_TRENDS_DATA.map((t, idx) => {
-                const xBase = 45 + idx * 40;
-                // Height ratios based on max volume 280
-                const cyberHeight = (t.cyber / 280) * 110;
-                const burgHeight = (t.burglary / 280) * 110;
-
-                return (
-                  <g key={idx} className="group">
-                    {/* Tooltip background on hover */}
-                    <rect 
-                      x={xBase - 10} 
-                      y="5" 
-                      width="35" 
-                      height="120" 
-                      fill="rgba(255,255,255,0.02)" 
-                      className="opacity-0 group-hover:opacity-100 transition-opacity rounded cursor-pointer"
-                      onClick={() => triggerGraphInfo(t.month, t.cyber, t.burglary)}
-                    />
-
-                    {/* Cyber crimes (Cyan) */}
-                    <rect 
-                      x={xBase} 
-                      y={130 - cyberHeight} 
-                      width="10" 
-                      height={Math.max(cyberHeight, 4)} 
-                      fill="#00f0ff" 
-                      className="hover:fill-[#00ffff] hover:brightness-125 cursor-pointer transition-all duration-200"
-                      onClick={() => triggerGraphInfo(t.month, t.cyber, t.burglary)}
-                      rx="1"
-                    />
-
-                    {/* Burglary (Magenta) */}
-                    <rect 
-                      x={xBase + 12} 
-                      y={130 - burgHeight} 
-                      width="10" 
-                      height={Math.max(burgHeight, 4)} 
-                      fill="#ff007f" 
-                      className="hover:fill-[#ff00aa] hover:brightness-125 cursor-pointer transition-all duration-200"
-                      onClick={() => triggerGraphInfo(t.month, t.cyber, t.burglary)}
-                      rx="1"
-                    />
-
-                    {/* Month abbreviation labels */}
-                    <text x={xBase + 11} y="145" fill="#a0aec0" fontSize="8" textAnchor="middle" className="font-mono text-[8px] tracking-tighter">
-                      {t.month}
-                    </text>
-                  </g>
-                );
-              })}
-            </svg>
-          </div>
-
-          {/* Color legends */}
-          <div className="flex gap-4 text-[10px] uppercase border-t border-white/5 pt-2 justify-center font-mono">
-            <span className="flex items-center gap-1.5 text-[#00f0ff] font-bold">
-              <span className="w-2.5 h-2.5 bg-[#00f0ff] rounded" /> 
-              {lang === 'EN' ? "CYBER OFFENSES" : "ಸೈಬರ್ ಹಾವಳಿ"}
-            </span>
-            <span className="flex items-center gap-1.5 text-[#ff007f] font-bold">
-              <span className="w-2.5 h-2.5 bg-[#ff007f] rounded" /> 
-              {lang === 'EN' ? "HOUSE BURGLARIES" : "ಮನೆ ಕಳ್ಳತನಗಳು"}
-            </span>
+            <span className="text-[10px] text-stone-500 font-mono tracking-widest uppercase block">DECISION RECURSION MATRIX</span>
+            <h2 className="text-sm font-extrabold text-white uppercase tracking-tight">
+              {lang === 'EN' ? "Criminology Forecasting Hub" : "ಅಪರಾಧ ನಡವಳಿಕೆ ಮುನ್ಸೂಚನೆ ಕೇಂದ್ರ"}
+            </h2>
           </div>
         </div>
 
-        {/* Dynamic Forecaster Model Widget (Column span 5 on md) */}
-        <div className="md:col-span-5 bg-[#11111a] border border-[#ff007f]/30 p-4 rounded-md flex flex-col justify-between min-h-[320px]">
-          <div>
-            <span className="text-xs text-[#ff007f] font-bold uppercase tracking-widest block border-b border-[#ff007f]/20 pb-1.5 mb-2 font-mono flex items-center gap-1.5">
-              <Sliders className="w-4 h-4 text-[#ff007f]" />
-              {lang === 'EN' ? "ZIA Predictive Threat Machine" : "ZIA ಕೃತಕ ಬುದ್ಧಿಮತ್ತೆ ಮುನ್ಸೂಚನೆ"}
-            </span>
-            <p className="text-[11px] text-stone-400 mb-3 leading-normal">
-              {lang === 'EN' 
-                ? "Simulate regional stress parameters to calculate early-warning recidivism probabilities." 
-                : "ಕಿರು ಪ್ರೊಬ್ಯಾಬಿಲಿಟಿ ಮತ್ತು ಮುನ್ನೆಚ್ಚರಿಕೆ ಅಂಕಗಳನ್ನು ಲೆಕ್ಕ ಮಾಡಲು ಸ್ಲೈಡರ್ ಹೊಂದಿಸಿ."}
-            </p>
+        {/* Real-time slider interaction and toggle buttons */}
+        <div className="lg:col-span-8 flex flex-col sm:flex-row gap-4 justify-between w-full">
+          {/* Mode switch trigger */}
+          <div className="flex bg-stone-950/60 rounded-xl border border-slate-800 p-1 shrink-0 self-start sm:self-center">
+            <button
+              type="button"
+              onClick={() => toggleChartMode('historical')}
+              className={`py-1.5 px-3.5 rounded-lg text-xs font-bold uppercase transition-all tracking-wide flex items-center gap-1 cursor-pointer ${
+                activeChartMode === 'historical'
+                  ? 'bg-slate-800/80 text-[#00f0ff] border border-slate-700 shadow-md'
+                  : 'text-stone-400 hover:text-stone-200'
+              }`}
+            >
+              <Cpu className="w-3.5 h-3.5" />
+              <span>{lang === 'EN' ? "Past Statistics" : "ಹಿಂದಿನ ಅಂಕಿಅಂಶ"}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => toggleChartMode('predicted')}
+              className={`py-1.5 px-3.5 rounded-lg text-xs font-bold uppercase transition-all tracking-wide flex items-center gap-1 cursor-pointer ${
+                activeChartMode === 'predicted'
+                  ? 'bg-gradient-to-r from-[#ff007f]/20 to-[#ff007f]/5 text-[#ff007f] border border-[#ff007f]/30 shadow-[0_0_10px_rgba(255,0,127,0.15)] font-extrabold'
+                  : 'text-stone-400 hover:text-[#ff007f]'
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>{lang === 'EN' ? "AI Projections" : "AI ಸಿಮ್ಯುಲೇಶನ್"}</span>
+            </button>
           </div>
 
-          {/* Slider trigger element */}
-          <div className="bg-black/60 p-3.5 border border-stone-800 rounded mb-3 flex flex-col gap-3">
-            <div>
-              <div className="flex justify-between items-center text-xs mb-1">
-                <span className="text-stone-300 font-medium">Threat Multiplier:</span>
-                <span className="text-[#00f0ff] font-extrabold font-mono tracking-widest">
-                  {forecastingMultiplier.toFixed(1)}x
+          {/* Slider */}
+          <div className="flex-grow flex items-center gap-3.5 bg-stone-950/40 border border-slate-800/60 rounded-xl px-4 py-2">
+            <Sliders className="w-4 h-4 text-stone-500 shrink-0" />
+            <div className="flex-grow">
+              <div className="flex justify-between items-center text-[11px] mb-1 font-mono">
+                <span className="text-stone-400 font-bold uppercase tracking-wide">Threat Coefficient</span>
+                <span className={`font-black ${forecastingMultiplier > 1.5 ? 'text-[#ff007f]' : 'text-[#00f0ff]'}`}>
+                  {forecastingMultiplier.toFixed(1)}x Modulator
                 </span>
               </div>
               <input 
@@ -166,63 +182,320 @@ export default function TrendsTabContent({
                 className="w-full accent-[#ff007f] h-1.5 bg-stone-900 rounded-lg cursor-pointer"
               />
             </div>
+          </div>
+        </div>
+      </div>
 
-            {/* Calculations outputs */}
-            <div className="grid grid-cols-2 gap-2.5 text-xs">
-              <div className="p-2 border border-stone-800 bg-black/80 rounded">
-                <span className="text-[9px] text-[#00f0ff] uppercase block font-bold font-mono">Bangalore Urban Risk</span>
-                <span className="text-[#ff007f] font-black text-xs font-mono">
-                  {(88 * forecastingMultiplier).toFixed(0)}%
-                </span>
-                <span className="text-[8px] text-stone-500 block">ELEVATED THREAT</span>
+      {/* Main Charts Row */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+        
+        {/* VIEW 1: ADVANCED COGNITIVE OVERLAY AREA CHART */}
+        <div className="xl:col-span-8 border border-slate-800 bg-[#0c0d15]/85 rounded-2xl shadow-xl p-4 sm:p-5 flex flex-col justify-between backdrop-blur-md">
+          <div className="mb-4">
+            <div className="flex justify-between items-start gap-4">
+              <div>
+                <h3 className="text-xs uppercase text-white font-black tracking-widest flex items-center gap-1.5 font-mono">
+                  <span className="w-2 h-2 rounded-full bg-[#00f0ff] animate-pulse" />
+                  {lang === 'EN' ? "TEMPORAL FLUX RATE" : "ಮಾಸಿಕ ಸಂಭವ ಪ್ರವೃತ್ತಿ"}
+                </h3>
+                <p className="text-[11px] text-stone-400 mt-0.5 leading-snug">
+                  {lang === 'EN' 
+                    ? "Interactive spatiotemporal progression. Glow highlights critical vector density thresholds."
+                    : "ಒಳಬರುವ ಪ್ರಕರಣಗಳ ಸರಣಿ ವಿಶ್ಲೇಷಣೆ ಮತ್ತು ಸೈಬರ್ ಅಪರಾಧದ ಮುನ್ಸೂಚನೆ ಪ್ರಾತಿನಿಧ್ಯ."}
+                </p>
               </div>
-              <div className="p-2 border border-stone-800 bg-black/80 rounded">
-                <span className="text-[9px] text-[#ff007f] uppercase block font-bold font-mono">Coastal Area NH-66</span>
-                <span className="text-[#00f0ff] font-black text-xs font-mono">
-                  {(65 * forecastingMultiplier).toFixed(0)}%
-                </span>
-                <span className="text-[8px] text-stone-500 block">STANDARD RADAR</span>
+
+              {/* Status Pills */}
+              <div className="flex items-center gap-1.5 text-[9px] font-mono shrink-0">
+                <span className="px-2 py-0.5 rounded border border-slate-800 bg-stone-950/60 text-[#00f0ff] font-bold">CYBER</span>
+                <span className="px-2 py-0.5 rounded border border-slate-800 bg-stone-950/60 text-[#ff007f] font-bold">BURGLARY</span>
               </div>
             </div>
           </div>
 
-          {/* Static warning alerts */}
-          <div className="p-3 bg-[#ff007f]/5 border border-[#ff007f]/30 rounded text-[11px] text-stone-300 leading-snug flex gap-2">
-            <AlertTriangle className="w-5 h-5 text-[#ff007f] shrink-0 animate-pulse" />
-            <div>
-              <strong className="text-white uppercase text-[10px] block mb-0.5">PREDICTIVE ANOMALY SCENARIO:</strong>
+          {/* Recharts Area Plot Container */}
+          <div className="w-full h-[280px] font-mono text-[10px] my-2 select-none relative">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <defs>
+                  {/* Cyber crime bright cyan gradient */}
+                  <linearGradient id="glowCyber" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#00f0ff" stopOpacity={0.35}/>
+                    <stop offset="95%" stopColor="#00f0ff" stopOpacity={0.0}/>
+                  </linearGradient>
+                  {/* Burglary bright pink gradient */}
+                  <linearGradient id="glowBurglary" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#ff007f" stopOpacity={0.35}/>
+                    <stop offset="95%" stopColor="#ff007f" stopOpacity={0.0}/>
+                  </linearGradient>
+                  
+                  {/* Glowing Filter Matrix */}
+                  <filter id="neonShadow" x="-20%" y="-20%" width="140%" height="140%">
+                    <feGaussianBlur in="SourceAlpha" stdDeviation="5" />
+                    <feOffset dx="0" dy="0" />
+                    <feComponentTransfer>
+                      <feFuncA type="linear" slope="0.85" />
+                    </feComponentTransfer>
+                    <feMerge>
+                      <feMergeNode />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                  </filter>
+                </defs>
+
+                <CartesianGrid strokeDasharray="3 3" stroke="#1c1e2d" vertical={false} />
+                <XAxis 
+                  dataKey="month" 
+                  stroke="#475569" 
+                  tickLine={false} 
+                  axisLine={false}
+                  dy={8}
+                />
+                <YAxis 
+                  stroke="#475569" 
+                  tickLine={false} 
+                  axisLine={false}
+                  dx={-5}
+                />
+                
+                <Tooltip content={<CustomTooltip />} />
+                
+                {/* Cyber crimes (Cyan) area layer */}
+                <Area 
+                  type="monotone" 
+                  dataKey="cyber" 
+                  name={lang === 'EN' ? "Cyber Fraud" : "ಸೈಬರ್ ಹಾವಳಿ"}
+                  stroke="#00f0ff" 
+                  strokeWidth={2.5}
+                  fill="url(#glowCyber)" 
+                  dot={{ r: 3.5, stroke: '#00f0ff', strokeWidth: 1.5, fill: '#0a0b10' }}
+                  activeDot={{ r: 5.5, stroke: '#00f0ff', strokeWidth: 2, fill: '#00f0ff' }}
+                  style={{ filter: 'drop-shadow(0 0 4px rgba(0,240,255,0.45))' }}
+                />
+
+                {/* Burglary (Magenta) area layer */}
+                <Area 
+                  type="monotone" 
+                  dataKey="burglary" 
+                  name={lang === 'EN' ? "Burglary" : "ಮನೆ ಕಳ್ಳತನಗಳು"}
+                  stroke="#ff007f" 
+                  strokeWidth={2.5}
+                  fill="url(#glowBurglary)" 
+                  dot={{ r: 3.5, stroke: '#ff007f', strokeWidth: 1.5, fill: '#0a0b10' }}
+                  activeDot={{ r: 5.5, stroke: '#ff007f', strokeWidth: 2, fill: '#ff007f' }}
+                  style={{ filter: 'drop-shadow(0 0 4px rgba(255,0,127,0.45))' }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="flex justify-between items-center border-t border-slate-800/80 pt-3 text-[10px] font-mono text-stone-500">
+            <span>GRID_RESOLUTION_REF: PORT_A_102</span>
+            <span>SYSTEM CONSOLE SECURED</span>
+          </div>
+        </div>
+
+        {/* VIEW 2: HOTSPOT CLUSTER DISTRIBUTION RADAR CHART */}
+        <div className="xl:col-span-4 border border-slate-800 bg-[#0c0d15]/85 rounded-2xl shadow-xl p-4 sm:p-5 flex flex-col justify-between backdrop-blur-md">
+          <div className="mb-2">
+            <h3 className="text-xs uppercase text-white font-black tracking-widest flex items-center gap-1.5 font-mono">
+              <span className="w-2 h-2 rounded-full bg-[#ff007f] animate-pulse" />
+              {lang === 'EN' ? "SPATIOTEMPORAL RADAR" : "ವಲಯವಾರು ವಿಶ್ಲೇಷಣೆ"}
+            </h3>
+            <p className="text-[11px] text-stone-400 mt-0.5 leading-snug">
               {lang === 'EN' 
-                ? "Majestic junction burglaries probability rises by 24% after hours (02:00 - 04:00 AM) aligned with localized smart-grid outages." 
-                : "ಸ್ಥಳೀಯ ಪವರ್ ಸ್ಥಗಿತಗಳ ಪಟ್ಟಿಯಂತೆ ಮೆಜೆಸ್ಟಿಕ್ ರೈಲ್ವೆ ನಿಲ್ದಾಣದ ಸುತ್ತ ಅಪರಾಧ ಸಂಭವಗಳು ಶೇಕಡಾ ೨೪ ಹೆಚ್ಚಾಗಿದೆ."}
+                ? "Frequency radar mapping regional danger weights across hourly slots."
+                : "ಪ್ರತಿ ಗಂಟೆಯ ನಡವಳಿಕೆ ಮಾದರಿಯನ್ನು ಆಧರಿಸಿ ಕನ್ಸೋಲ್ ಮ್ಯಾಪಿಂಗ್."}
+            </p>
+          </div>
+
+          {/* Recharts Radar */}
+          <div className="w-full h-[250px] font-mono text-[9px] py-1 select-none flex items-center justify-center">
+            <ResponsiveContainer width="100%" height="100%">
+              <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
+                <PolarGrid stroke="#2e354f" />
+                <PolarAngleAxis 
+                  dataKey="window" 
+                  stroke="#475569" 
+                  tick={{ fill: '#94a3b8', fontSize: 9 }}
+                />
+                <PolarRadiusAxis 
+                  angle={30} 
+                  domain={[0, 200]} 
+                  stroke="#334155" 
+                  tick={{ fill: '#64748b' }}
+                />
+                
+                {/* Core Risk Radar Polygon */}
+                <Radar 
+                  name="Risk Index" 
+                  dataKey="RiskIndex" 
+                  stroke="#ff007f" 
+                  fill="#ff007f" 
+                  fillOpacity={0.2} 
+                  style={{ filter: 'drop-shadow(0 0 5px rgba(255,0,127,0.4))' }}
+                />
+                
+                {/* Secondary Density Polygon */}
+                <Radar 
+                  name="Activity Density" 
+                  dataKey="Density" 
+                  stroke="#00f0ff" 
+                  fill="#00f0ff" 
+                  fillOpacity={0.15} 
+                  style={{ filter: 'drop-shadow(0 0 5px rgba(0,240,255,0.4))' }}
+                />
+              </RadarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Radar Legend and Analytics Summary */}
+          <div className="border-t border-slate-800/80 pt-3 bg-stone-950/20 p-2 rounded-lg text-[10px] flex justify-between tracking-normal font-mono">
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded bg-[#ff007f]" />
+              <span className="text-stone-400">Risk Intensity</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded bg-[#00f0ff]" />
+              <span className="text-stone-400">Call Frequency</span>
             </div>
           </div>
         </div>
 
       </div>
 
-      {/* Grid of Spatiotemporal Clusters */}
-      <div className="border border-[#00f0ff]/20 bg-black/40 p-4 rounded-md">
-        <div className="flex items-center gap-1.5 mb-3">
-          <Clock className="w-4 h-4 text-[#00f0ff] animate-pulse" />
-          <span className="text-xs text-[#00f0ff] font-bold uppercase tracking-widest font-mono">
-            {lang === 'EN' ? "Active Criminology Hotspot Windows" : "ಸಕ್ರಿಯ ಅಪರಾಧ ಮುನ್ನೆಚ್ಚರಿಕೆ ಸಮಯಗಳು"}
-          </span>
-        </div>
+      {/* VIEW 3: SIMULATED REGIONAL PEAK RISK BAR CHART */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
         
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {SPATIOTEMPORAL_CLUSTERS.map((cur, i) => (
-            <div key={i} className="p-3 bg-black/80 border border-stone-800 hover:border-[#ff007f]/50 transition-colors rounded flex flex-col justify-between h-[90px]">
-              <div className="flex items-center gap-1 text-[9px] text-[#ff007f] font-bold font-mono uppercase">
-                <Clock className="w-3 h-3 text-[#ff007f]" /> 
-                {cur.hours}
-              </div>
-              <span className="text-white text-xs font-bold leading-tight line-clamp-1">{cur.title}</span>
-              <span className="text-[9px] text-[#00f0ff] tracking-wider uppercase font-mono mt-1 font-bold">
-                {cur.primaryCategory}
-              </span>
+        {/* Forecaster Details Card */}
+        <div className="md:col-span-4 flex flex-col gap-4 bg-gradient-to-br from-[#11121d]/90 to-[#0e101a]/85 border border-slate-800/90 rounded-2xl p-4 sm:p-5 shadow-lg relative overflow-hidden backdrop-blur-md">
+          {/* Subtle graphic grid accent in background */}
+          <div className="absolute top-0 right-0 w-24 h-24 bg-[#ff007f]/5 rounded-bl-full pointer-events-none filter blur-xl" />
+          
+          <div className="flex gap-2">
+            <div className="w-8 h-8 rounded-lg bg-[#ff007f]/10 border border-[#ff007f]/20 flex items-center justify-center text-[#ff007f] shrink-0">
+              <ShieldAlert className="w-4 h-4 animate-bounce" />
             </div>
-          ))}
+            <div>
+              <span className="text-[10px] text-[#ff007f] font-mono tracking-widest uppercase block font-extrabold font-mono">CRITICAL INCIDENT PROTOCOL</span>
+              <h4 className="text-xs font-black text-white uppercase tracking-wider mt-0.5">
+                {lang === 'EN' ? "ZIA PREDICTIVE ALIGNMENT" : "ZIA ಸ್ಥಿರ ಮುನ್ಸೂಚನೆ"}
+              </h4>
+            </div>
+          </div>
+
+          <p className="text-stone-400 text-xs leading-relaxed">
+            {lang === 'EN' 
+              ? "Aligning physical grid parameters with real-time digital transaction flows reveals localized threats. Multipliers above 1.5x triggers state coordination."
+              : "ಕಾರ್ಖಾನೆಗಳ ವಿದ್ಯುತ್ ಕಡಿತ ಹಾಗೂ ಇತರೆ ಬಾಹ್ಯ ಪ್ರಚೋದಕಗಳ ಸಮಗ್ರ ವಿಶ್ಲೇಷಣೆ ವರದಿ."}
+          </p>
+
+          <div className="p-3.5 bg-black/60 border border-slate-800/80 rounded-xl flex gap-3 text-xs leading-relaxed items-start">
+            <AlertTriangle className="w-5 h-5 text-yellow-500 shrink-0" />
+            <div>
+              <strong className="text-yellow-500 uppercase text-[10px] block font-mono">System Projections Advisory:</strong>
+              {lang === 'EN'
+                ? "Predictive cyber SMS activity rises around salary disbursements (1st - 5th of each month) across Koramangala IT corridors."
+                : "ಪ್ರತಿ ತಿಂಗಳ ಮೊದಲ ವಾರ ಸೈಬರ್ ಮೋಸ ಪ್ರಕರಣ ಹೆಚ್ಚಾಗುವ ಸಾಧ್ಯತೆ ಕಂಡುಬಂದಿದೆ."}
+            </div>
+          </div>
         </div>
+
+        {/* Recharts Live Bar Charting */}
+        <div className="md:col-span-8 border border-slate-800 bg-[#0c0d15]/85 rounded-2xl shadow-xl p-4 sm:p-5 flex flex-col justify-between backdrop-blur-md">
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <h3 className="text-xs uppercase text-white font-black tracking-widest flex items-center gap-1.5 font-mono">
+                <span className="w-2 h-2 rounded-full bg-[#00f0ff] animate-ping" />
+                {lang === 'EN' ? "SIMULATED URBAN RISK INDEX" : "ಮಾದರಿ ಅಪಾಯ ಸೂಚಿಗಳು"}
+              </h3>
+              <p className="text-[11px] text-stone-400 mt-0.5 leading-snug">
+                {lang === 'EN' 
+                  ? "District threat levels calculated in proportion to current AI Risk modifier."
+                  : "ಹೊಸ ವಿಶ್ಲೇಷಕ ಮೌಲ್ಯಗಳ ಆಧಾರದಲ್ಲಿ ನಗರದ ವಲಯವಾರು ಅಪಾಯದ ಮಾಪನಾಂಕಗಳು."}
+              </p>
+            </div>
+
+            <div className="text-[10px] font-mono text-stone-400">
+              COEFFICIENT: <span className="text-[#00f0ff] font-bold">{forecastingMultiplier.toFixed(1)}x</span>
+            </div>
+          </div>
+
+          {/* BarChart representing urban sector risk levels */}
+          <div className="w-full h-[180px] font-mono text-[9px] select-none my-1">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart 
+                data={[
+                  { district: lang === 'EN' ? "Bangalore City" : "ಬೆಂಗಳೂರು ನಗರ", risk: Math.round(88 * forecastingMultiplier), fill: '#ff007f' },
+                  { district: lang === 'EN' ? "Hubballi-Dharwad" : "ಹುಬ್ಬಳ್ಳಿ-ಧಾರವಾಡ", risk: Math.round(52 * forecastingMultiplier), fill: '#00f0ff' },
+                  { district: lang === 'EN' ? "Coastal Port" : "ಕರಾವಳಿ ವಲಯ", risk: Math.round(65 * forecastingMultiplier), fill: '#00f0ff' },
+                  { district: lang === 'EN' ? "Mysuru Heritage" : "ಮೈಸೂರು ವಲಯ", risk: Math.round(41 * forecastingMultiplier), fill: '#10b981' },
+                ]}
+                margin={{ top: 5, right: 10, left: -25, bottom: 0 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#1c1e2d" vertical={false} />
+                <XAxis 
+                  dataKey="district" 
+                  stroke="#475569" 
+                  tickLine={false}
+                  axisLine={false}
+                  dy={5}
+                />
+                <YAxis 
+                  stroke="#475569" 
+                  tickLine={false}
+                  axisLine={false}
+                  domain={[0, 250]}
+                />
+                <Tooltip 
+                  cursor={{ fill: 'rgba(255,255,255,0.015)' }} 
+                  content={({ active, payload }: any) => {
+                    if (active && payload && payload.length) {
+                      const data = payload[0].payload;
+                      return (
+                        <div className="bg-[#0b0c16]/95 border border-slate-800 rounded-lg p-2.5 font-mono text-[11px] shadow-2xl">
+                          <p className="text-stone-300 font-bold uppercase mb-1">{data.district}</p>
+                          <p className="text-white">
+                            Computed Risk Status: <span className="font-extrabold" style={{ color: data.fill }}>{data.risk}% Score</span>
+                          </p>
+                          <span className={`text-[9px] block uppercase font-bold mt-1 ${data.risk > 100 ? 'text-[#ff007f] animate-pulse' : 'text-stone-500'}`}>
+                            {data.risk > 100 ? "⚠️ CRITICAL RESPONSE LEVEL" : "● OPERATIONAL LEVEL"}
+                          </span>
+                        </div>
+                      );
+                    }
+                    return null;
+                  }} 
+                />
+                
+                <Bar 
+                  dataKey="risk" 
+                  radius={[6, 6, 0, 0]}
+                  maxBarSize={32}
+                >
+                  {(entry, index) => {
+                    // Dynamic coloring for risk categories
+                    const val = Math.round((index === 0 ? 88 : index === 1 ? 52 : index === 2 ? 65 : 41) * forecastingMultiplier);
+                    const barColor = val > 120 ? '#ff007f' : val > 75 ? '#00f0ff' : '#10b981';
+                    return (
+                      <Cell 
+                        key={`cell-${index}`} 
+                        fill={barColor} 
+                        style={{ filter: `drop-shadow(0 0 6px ${barColor}50)` }}
+                      />
+                    );
+                  }}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="flex justify-between items-center bg-black/60 p-2 px-3 rounded-lg border border-slate-900 border-dashed text-[10px] text-stone-500 font-mono">
+            <span>METRIC: SIMULATED CRIME INTENSITY RATE</span>
+            <span className="text-[#00f0ff] uppercase">SYSTEMS SYNCD ACTIVE // 100%</span>
+          </div>
+        </div>
+
       </div>
 
     </div>
