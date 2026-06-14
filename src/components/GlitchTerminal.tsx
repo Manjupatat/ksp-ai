@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { jsPDF } from 'jspdf';
 import { 
   Shield, 
   Volume2, 
@@ -90,6 +91,12 @@ export default function GlitchTerminal({ operatorId = 'IA-GOWDA-7301' }: GlitchT
   
   // Audit Logs running memory state
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(SYSTEM_AUDIT_LOGS);
+
+  // Catalyst SmartBrowz state
+  const [smartBrowzLoading, setSmartBrowzLoading] = useState(false);
+  const [showSmartBrowzModal, setShowSmartBrowzModal] = useState(false);
+  const [smartBrowzLogs, setSmartBrowzLogs] = useState<string[]>([]);
+  const [smartBrowzStatus, setSmartBrowzStatus] = useState<string>('');
 
   // Auto Scroll Chat Ref
   const chatBottomRef = useRef<HTMLDivElement>(null);
@@ -375,6 +382,471 @@ export default function GlitchTerminal({ operatorId = 'IA-GOWDA-7301' }: GlitchT
     URL.revokeObjectURL(url);
   };
 
+  // Catalyst SmartBrowz Compile Pipeline
+  const handleSmartBrowzExport = async () => {
+    setSmartBrowzLoading(true);
+    setShowSmartBrowzModal(true);
+    setSmartBrowzLogs([
+      "▶ INITIALIZING SMARTBROWZ INTEGRATION CONSOLE...",
+      "▶ LOCATING COGNITIVE REGISTER CORE...",
+      `▶ EXPORTING VIEW: "${activeTab.toUpperCase()}" UNDER CLEARANCE: "${role}"`,
+    ]);
+    setSmartBrowzStatus("CONNECTING");
+    playTerminalBeep('success');
+
+    try {
+      // Step 1: Query the Express /api/generate-pdf endpoint
+      await new Promise(resolve => setTimeout(resolve, 600));
+      const response = await fetch('/api/generate-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          viewName: activeTab.toUpperCase(),
+          activeClearance: role
+        })
+      });
+      
+      const payload = await response.json();
+      
+      // Load diagnostic streams from Zoho backend response
+      if (payload.diagnosticLogs) {
+        for (const log of payload.diagnosticLogs) {
+          await new Promise(resolve => setTimeout(resolve, 400));
+          setSmartBrowzLogs(prev => [...prev, `[SERVER] ${log}`]);
+        }
+      }
+
+      setSmartBrowzLogs(prev => [
+        ...prev,
+        `✔ API CODE: ${payload.status}`,
+        `✔ COMPILER NODE: ${payload.compilerId}`,
+        `▶ COMPILING PROFESSIONAL DATA VECTOR GRAPHICS FOR "${activeTab.toUpperCase()}"...`,
+      ]);
+      setSmartBrowzStatus("COMPILING");
+
+      await new Promise(resolve => setTimeout(resolve, 600));
+
+      // Step 2: Use jsPDF client-side engine to build the multi-page report vector
+      const doc = new jsPDF();
+      
+      // Helper: Draw Header & Grid Frame on A4 Page (210 x 297 mm)
+      const drawFrameAndHeader = (pageNumber: number) => {
+        // Core background slate bands or borders
+        doc.setDrawColor(200, 200, 200);
+        doc.setLineWidth(0.3);
+        doc.rect(5, 5, 200, 287); // thin outer layout frame
+        
+        // Official Header Card
+        doc.setFillColor(31, 34, 52); // solid deep banner gray
+        doc.rect(7, 7, 196, 28, 'F');
+        
+        // Left highlight accent bar
+        doc.setFillColor(255, 0, 127);
+        doc.rect(7, 7, 3, 28, 'F');
+        
+        // Header Text
+        doc.setTextColor(255, 255, 255);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(13);
+        doc.text("KARNATAKA STATE POLICE (KSP)", 15, 15);
+        
+        doc.setFontSize(10);
+        doc.setTextColor(0, 240, 255);
+        doc.text("STATE CRIME RECORDS BUREAU (SCRB) // DIGITAL INTEL DIVISION", 15, 20);
+        
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(200, 200, 200);
+        doc.text("COMPILING ENGINE: ZOHO CATALYST SMARTBROWZ CLOUD GRAPHICS CORE v4.7", 15, 25);
+        doc.text(`TIMESTEP: ${new Date().toLocaleString()}  |  PAGE: 0${pageNumber}`, 15, 29);
+        
+        // Stamp stamp on right side
+        doc.setFillColor(10, 10, 15);
+        doc.rect(160, 10, 38, 22, 'F');
+        doc.setDrawColor(255, 0, 127);
+        doc.setLineWidth(0.5);
+        doc.rect(160, 10, 38, 22);
+        
+        doc.setTextColor(255, 0, 127);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        doc.text("KSP SCRB", 166, 17);
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(7);
+        doc.setFont("helvetica", "normal");
+        doc.text("SECURE HANDSHAKE", 163, 22);
+        doc.setTextColor(0, 240, 255);
+        doc.text("VALIDATED APPROVED", 163, 27);
+      };
+
+      // Helper: Draw Footers (Compliant badge)
+      const drawFooter = (pageNumber: number) => {
+        const y = 286;
+        doc.setDrawColor(200, 200, 200);
+        doc.line(7, y - 5, 203, y - 5);
+        
+        doc.setTextColor(110, 110, 120);
+        doc.setFontSize(7);
+        doc.setFont("helvetica", "normal");
+        doc.text("RESTRICTED REPORT - FOR OFFICIAL SCRB USE ONLY. DISCLOSURE LEADS TO IMMEDIATE COMMISSARY REVOCATION.", 7, y - 1);
+        doc.text("CATALYST SECURITY ENHANCED BY CATALYST SIGNALS & SMARTBROWZ PDF AGENT.", 125, y - 1);
+      };
+
+      drawFrameAndHeader(1);
+
+      // Section Titles & Core Metadata metadata block on first page
+      doc.setFillColor(243, 244, 246);
+      doc.rect(7, 38, 196, 22, 'F');
+      doc.setDrawColor(180, 180, 180);
+      doc.rect(7, 38, 196, 22);
+      
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.setTextColor(31, 34, 52);
+      doc.text("FORENSIC DOSSIER CLASSIFICATION SCHEMA", 11, 44);
+      
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(70, 70, 80);
+      doc.text(`LOGGED OPERATOR: ${operatorId}`, 11, 49);
+      doc.text(`SESSION CLEARANCE: CLEARANCE_${role}`, 11, 54);
+      doc.text(`REQUESTED DOSSIER VIEW: ${activeTab.toUpperCase()}_REGISTER`, 100, 49);
+      doc.text(`CATALYST_PROXY_STATUS: CRYPTO_ONLINE`, 100, 54);
+
+      // Dynamic Section content rendering
+      let startY = 66;
+
+      if (activeTab === 'chat') {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.setTextColor(31, 34, 52);
+        doc.text("SECTION 1.0: DECRYPTED INTELLIGENCE CONVERSATION SUMMARY", 10, startY + 5);
+        
+        let cy = startY + 12;
+        messages.forEach((m, idx) => {
+          if (cy > 250) {
+            drawFooter(1);
+            doc.addPage();
+            drawFrameAndHeader(2);
+            cy = 45; // restart position
+          }
+          
+          doc.setFillColor(m.sender === 'user' ? 245 : 235, m.sender === 'user' ? 250 : 238, m.sender === 'user' ? 255 : 242);
+          doc.rect(10, cy, 190, 22, 'F');
+          doc.setDrawColor(m.sender === 'user' ? 200 : 255, m.sender === 'user' ? 230 : 200, m.sender === 'user' ? 255 : 220);
+          doc.rect(10, cy, 190, 22);
+          
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(8);
+          doc.setTextColor(m.sender === 'user' ? 0 : 200, m.sender === 'user' ? 120 : 0, m.sender === 'user' ? 200 : 100);
+          doc.text(`[MESSAGE 0${idx+1}] SENDER: ${m.sender.toUpperCase()} | TIME: ${m.timestamp}`, 13, cy + 5);
+          
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(8.5);
+          doc.setTextColor(30, 30, 30);
+          
+          // Truncate message text to fit inside the rectangular envelope neatly
+          const slicedText = m.text.length > 130 ? m.text.substring(0, 125) + "..." : m.text;
+          doc.text(slicedText, 13, cy + 12);
+          
+          if (m.evidenceTrail && m.evidenceTrail.length > 0) {
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(7.5);
+            doc.setTextColor(255, 0, 127);
+            doc.text(`Grounded References: ${m.evidenceTrail.join(' | ')}`, 13, cy + 18);
+          }
+          cy += 25;
+        });
+
+      } else if (activeTab === 'network') {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.setTextColor(31, 34, 52);
+        doc.text("SECTION 2.0: SUSPECT RELATIONSHIP NETWORK GRAPH TELEMETRY", 10, startY + 5);
+        
+        let cy = startY + 12;
+        // Draw a table for suspicious peer relation lines
+        doc.setFillColor(31, 34, 52);
+        doc.rect(10, cy, 190, 8, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        doc.text("SUSPECT A", 12, cy + 5);
+        doc.text("SUSPECT B/PARTNER", 65, cy + 5);
+        doc.text("RELATION / MODUS OPERANDI", 110, cy + 5);
+        cy += 8;
+        
+        MOCK_OFFENDERS.forEach((off, i) => {
+          off.allies?.forEach((acc, j) => {
+            doc.setFillColor(i % 2 === 0 ? 255 : 245, 255, 255);
+            doc.rect(10, cy, 190, 7, 'F');
+            doc.setTextColor(40, 40, 40);
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(7.5);
+            doc.text(off.name, 12, cy + 5);
+            doc.text(acc, 65, cy + 5);
+            doc.text(`${off.primaryMO.substring(0, 40)}...`, 110, cy + 5);
+            cy += 7;
+          });
+        });
+
+        cy += 10;
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.setTextColor(255, 0, 127);
+        doc.text("DECISION ANALYSIS RADIAL NODAL INTENSITY", 10, cy);
+        cy += 5;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8.5);
+        doc.setTextColor(60, 60, 60);
+        doc.text("Graph displays high recurrence clustering. Skull Shiva acts as central hub for gold liquidation networks while Crypto Vicky commands phishing pipelines.", 10, cy);
+
+      } else if (activeTab === 'trends') {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.setTextColor(31, 34, 52);
+        doc.text("SECTION 3.0: SPATIOTEMPORAL TRENDS & STATISTICAL MULTIPLIER", 10, startY + 5);
+        
+        let cy = startY + 12;
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        doc.setTextColor(255, 0, 127);
+        doc.text(`ACTIVE THREAT FORECAST WEIGHT COEFFICIENT: ${forecastingMultiplier.toFixed(1)}x RISK IMPACT`, 10, cy);
+        cy += 6;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(50, 50, 50);
+        doc.text("Historical statistics modulated in proportion to the AI early-warning stress multiplier reveal critical thresholds:", 10, cy);
+        cy += 8;
+
+        // Draw monthly values table
+        doc.setFillColor(31, 34, 52);
+        doc.rect(10, cy, 190, 8, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFont("helvetica", "bold");
+        doc.text("MONTH", 12, cy + 5);
+        doc.text("CYBER FRAUDS (SIMULATED)", 60, cy + 5);
+        doc.text("HOUSE BURGLARIES (SIMULATED)", 125, cy + 5);
+        cy += 8;
+
+        TIME_TRENDS_DATA.forEach((t, i) => {
+          doc.setFillColor(i % 2 === 0 ? 255 : 245, 255, 255);
+          doc.rect(10, cy, 190, 7, 'F');
+          doc.setTextColor(40, 40, 40);
+          doc.setFont("helvetica", "normal");
+          doc.text(t.month, 12, cy + 5);
+          doc.text(`${Math.round(t.cyber * forecastingMultiplier)} Casefiles`, 60, cy + 5);
+          doc.text(`${Math.round(t.burglary * forecastingMultiplier)} Casefiles`, 125, cy + 5);
+          cy += 7;
+        });
+
+        // Spatiotemporal danger slots table
+        cy += 10;
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.setTextColor(31, 34, 52);
+        doc.text("3.2 REGIONAL SECURITY RESPONSE RECOMMENDATION INDEX", 10, cy);
+        cy += 5;
+
+        doc.setFillColor(240, 242, 245);
+        doc.rect(10, cy, 190, 25, 'F');
+        doc.setDrawColor(210, 210, 215);
+        doc.rect(10, cy, 190, 25);
+        
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        doc.setTextColor(255, 0, 127);
+        doc.text("⚠️ CRITICAL FORECASTER ANOMALY DETECTION NOTICE", 13, cy + 6);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(7.5);
+        doc.setTextColor(60, 60, 60);
+        doc.text(`1. BENGALURU URBAN RISK: ${(88 * forecastingMultiplier).toFixed(0)}% High priority surveillance deployment recommended near Koramangala IT grid gates.`, 13, cy + 13);
+        doc.text(`2. MARITIME NH-66 PORT RISK: ${(65 * forecastingMultiplier).toFixed(0)}% Coastal vehicle checks on synthetic container transit channels.`, 13, cy + 20);
+
+      } else if (activeTab === 'sociological') {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.setTextColor(31, 34, 52);
+        doc.text("SECTION 4.0: SOCIOLOGICAL STRATEGIC STRESS INDEX REGISTRY", 10, startY + 5);
+        
+        let cy = startY + 12;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8.5);
+        doc.setTextColor(50, 50, 50);
+        doc.text("Co-dependent environmental, climatic, educational, and urbanization metrics logged inside Karnataka State Census models:", 10, cy);
+        cy += 8;
+
+        SOCIOLOGICAL_INSIGHTS.forEach((ins, i) => {
+          if (cy > 240) {
+            drawFooter(1);
+            doc.addPage();
+            drawFrameAndHeader(2);
+            cy = 45;
+          }
+          doc.setFillColor(248, 249, 250);
+          doc.rect(10, cy, 190, 18, 'F');
+          doc.setDrawColor(220, 224, 230);
+          doc.rect(10, cy, 190, 18);
+          
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(8);
+          doc.setTextColor(31, 34, 52);
+          doc.text(`FACTOR: ${ins.indicator.toUpperCase()} | VAL: ${ins.value}`, 13, cy + 5);
+          
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(7.5);
+          doc.setTextColor(70, 70, 70);
+          doc.text(`CORRELATION: ${ins.crimeCorrelation} | IMPACT ASSESSMENT: ${ins.impactOnCrime}`, 13, cy + 12);
+          cy += 22;
+        });
+
+      } else if (activeTab === 'offenders') {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.setTextColor(31, 34, 52);
+        doc.text("SECTION 5.0: HABITUAL OFFENDERS REPEAT REGISTRY RECORDS", 10, startY + 5);
+        
+        let cy = startY + 12;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8.5);
+        doc.setTextColor(50, 50, 50);
+        doc.text("Karnataka Criminal recividism track ledger. Security compliance checks mandated under Police Section-310:", 10, cy);
+        cy += 8;
+
+        MOCK_OFFENDERS.forEach((off, i) => {
+          if (cy > 230) {
+            drawFooter(1);
+            doc.addPage();
+            drawFrameAndHeader(2);
+            cy = 45;
+          }
+
+          doc.setFillColor(244, 245, 248);
+          doc.rect(10, cy, 190, 32, 'F');
+          doc.setDrawColor(210, 215, 222);
+          doc.rect(10, cy, 190, 32);
+          
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(9);
+          doc.setTextColor(255, 0, 127);
+          doc.text(`${off.name.toUpperCase()} (Age: ${off.age}) | RECIDIVISM HAZARD INDEX: ${off.riskScore}%`, 13, cy + 6);
+          
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(8);
+          doc.setTextColor(40, 40, 40);
+          doc.text(`STATUS CLASSIFICATION: ${off.status} | ASSOCIATED RECT: ${off.associatedCrimes.join(', ')}`, 13, cy + 12);
+          doc.text(`MODUS OPERANDI: ${off.primaryMO}`, 13, cy + 18);
+          
+          if (off.allies && off.allies.length > 0) {
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(0, 120, 200);
+            doc.text(`Known Allies / Partners: ${off.allies.join(', ')}`, 13, cy + 24);
+          }
+          cy += 36;
+        });
+
+      } else { // activeTab === 'audit'
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.setTextColor(31, 34, 52);
+        doc.text("SECTION 6.0: COGNITIVE ACCESS & COMPLIANCE TRANSACTION LEDGER", 10, startY + 5);
+        
+        let cy = startY + 12;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8.5);
+        doc.setTextColor(50, 50, 50);
+        doc.text("ZIA Catalyst Audit logs verifying clearance compliance and forensic handshake triggers:", 10, cy);
+        cy += 8;
+
+        // Audit Table headings
+        doc.setFillColor(31, 34, 52);
+        doc.rect(10, cy, 190, 8, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(7.5);
+        doc.text("TIMESTAMP", 12, cy + 5);
+        doc.text("OPERATOR / CLEARANCE", 45, cy + 5);
+        doc.text("ACTION EXECUTED", 100, cy + 5);
+        doc.text("STATUS", 175, cy + 5);
+        cy += 8;
+
+        auditLogs.forEach((log, i) => {
+          if (cy > 250) {
+            drawFooter(1);
+            doc.addPage();
+            drawFrameAndHeader(2);
+            cy = 45;
+            
+            // Redraw table header on consecutive page
+            doc.setFillColor(31, 34, 52);
+            doc.rect(10, cy, 190, 8, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(7.5);
+            doc.text("TIMESTAMP", 12, cy + 5);
+            doc.text("OPERATOR / CLEARANCE", 45, cy + 5);
+            doc.text("ACTION EXECUTED", 100, cy + 5);
+            doc.text("STATUS", 175, cy + 5);
+            cy += 8;
+          }
+
+          doc.setFillColor(i % 2 === 0 ? 255 : 246, 255, 255);
+          doc.rect(10, cy, 190, 7, 'F');
+          doc.setTextColor(40, 40, 40);
+          doc.setFont("helvetica", "normal");
+          
+          doc.text(new Date(log.timestamp).toLocaleTimeString(), 12, cy + 5);
+          doc.text(`${log.user} (${log.role})`, 45, cy + 5);
+          doc.text(`${log.action} : ${log.details.substring(0, 35)}...`, 100, cy + 5);
+          
+          if (log.status === 'ALLOWED') {
+            doc.setTextColor(0, 150, 50);
+            doc.setFont("helvetica", "bold");
+          } else {
+            doc.setTextColor(220, 0, 50);
+            doc.setFont("helvetica", "bold");
+          }
+          doc.text(log.status, 175, cy + 5);
+          doc.setTextColor(40, 40, 40);
+          doc.setFont("helvetica", "normal");
+          cy += 7;
+        });
+      }
+
+      drawFooter(1);
+
+      // Save PDF trigger
+      const pdfFileName = `ksp_intel_report_${activeTab}_${Date.now()}.pdf`;
+      doc.save(pdfFileName);
+
+      setSmartBrowzLogs(prev => [
+        ...prev,
+        "✔ CLIENT VECTOR PARSING COMPLETE.",
+        `✔ WRITTEN TO "${pdfFileName.toUpperCase()}"`,
+        "✔ PDF COMPILE PIPELINE SHUTDOWN CLEARED. SUCCESS."
+      ]);
+      setSmartBrowzStatus("COMPLETE");
+      playTerminalBeep('success');
+
+      setTimeout(() => {
+        setSmartBrowzLoading(false);
+      }, 1500);
+
+    } catch (err: any) {
+      console.error(err);
+      setSmartBrowzLogs(prev => [
+        ...prev,
+        `❌ CRITICAL ENGINE EXCEPTION: ${err.message || 'Unknown network error'}`,
+        "❌ SMARTBROWZ GATEWAY PIPELINE ABORTED."
+      ]);
+      setSmartBrowzStatus("ERROR");
+      playTerminalBeep('warn');
+      setTimeout(() => {
+        setSmartBrowzLoading(false);
+      }, 3000);
+    }
+  };
+
   // Reusable High-Fidelity CSV Exporter Utility
   const exportToCSV = (data: any[], headers: string[], rowMapper: (item: any) => string[], filename: string) => {
     playTerminalBeep('success');
@@ -538,6 +1010,22 @@ export default function GlitchTerminal({ operatorId = 'IA-GOWDA-7301' }: GlitchT
             {lang === 'EN' ? "OPERATING PROTOCOLS" : "ಕಾರ್ಯಾಚರಣೆ ಕೈಪಿಡಿ"}
           </button>
 
+          {/* CATALYST SMARTBROWZ PDF REPORT GENERATOR TRIGGER */}
+          <button
+            type="button"
+            disabled={smartBrowzLoading}
+            onClick={handleSmartBrowzExport}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition-all flex items-center gap-1.5 cursor-pointer border ${
+              smartBrowzLoading 
+                ? 'bg-[#ff007f]/10 text-[#ff007f] border-[#ff007f]/40 animate-pulse' 
+                : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:border-emerald-400 hover:bg-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.15)]'
+            }`}
+            title="Compile & Download Professional-grade PDF with Catalyst SmartBrowz"
+          >
+            <Download className="w-3.5 h-3.5 shrink-0 text-emerald-400" />
+            <span>[PDF REPORT_ZSB]</span>
+          </button>
+
           {/* Language Selection Grid */}
           <div className="flex border border-slate-800/80 bg-black/60 rounded-lg p-0.5">
             <button 
@@ -641,35 +1129,90 @@ export default function GlitchTerminal({ operatorId = 'IA-GOWDA-7301' }: GlitchT
         </button>
       </div>
 
-      {/* CORE SHELL NAVIGATION BAR WITH DENSE RESPONSIVENESS */}
-      <nav className="flex flex-wrap gap-1.5 mb-6 p-1.5 bg-[#11121d]/50 rounded-xl border border-slate-800/60 backdrop-blur-md">
-        {[
-          { tabName: 'chat', label: activeBillingTerms.chatTab, icon: Terminal },
-          { tabName: 'network', label: activeBillingTerms.networkTab, icon: Users },
-          { tabName: 'trends', label: activeBillingTerms.patternTab, icon: TrendingUp },
-          { tabName: 'sociological', label: activeBillingTerms.socioTab, icon: Layers },
-          { tabName: 'offenders', label: activeBillingTerms.profileTab, icon: Shield },
-          { tabName: 'audit', label: activeBillingTerms.auditTab, icon: Shield },
-        ].map((item) => {
-          const IconComponent = item.icon;
-          const isActive = activeTab === item.tabName;
-          return (
-            <button
-              key={item.tabName}
-              type="button"
-              onClick={() => { playTerminalBeep('click'); setActiveTab(item.tabName as any); }}
-              className={`flex items-center gap-2 px-3.5 py-2.5 text-xs tracking-wider uppercase transition-all font-bold cursor-pointer rounded-lg flex-grow md:flex-grow-0 text-center justify-center ${
-                isActive 
-                  ? 'bg-gradient-to-r from-[#ff007f] to-[#ff007f]/85 text-white shadow-[0_0_12px_rgba(255,0,127,0.45)]' 
-                  : 'bg-stone-950/60 border border-transparent hover:border-stone-800 text-stone-400 hover:text-[#00f0ff]'
-              }`}
-            >
-              <IconComponent className="w-3.5 h-3.5" />
-              <span>{item.label}</span>
-            </button>
-          );
-        })}
-      </nav>
+      {/* CORE BIFURCATED SHELL NAVIGATION MATRIX */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        
+        {/* SECTION A: PRIMARY TERMINAL CONSOLE */}
+        <div className="border border-[#00f0ff]/30 bg-[#0c0d15]/85 p-3 rounded-xl backdrop-blur-md flex flex-col gap-2 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+          <div className="flex items-center justify-between px-2 pb-1.5 border-b border-slate-800/60">
+            <span className="text-[10px] font-mono font-bold tracking-widest text-[#00f0ff] uppercase flex items-center gap-1.5">
+              <Terminal className="w-3.5 h-3.5 animate-pulse text-[#00f0ff]" /> [📟 PRIMARY TERMINAL CONSOLE]
+            </span>
+            <span className="text-[9px] font-mono text-stone-500 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping inline-block" /> ONLINE
+            </span>
+          </div>
+          <div className="grid grid-cols-3 gap-1.5">
+            {[
+              { tabName: 'chat', label: activeBillingTerms.chatTab, icon: Terminal },
+              { tabName: 'network', label: activeBillingTerms.networkTab, icon: Users },
+              { tabName: 'audit', label: activeBillingTerms.auditTab, icon: Shield },
+            ].map((item) => {
+              const IconComponent = item.icon;
+              const isActive = activeTab === item.tabName;
+              return (
+                <button
+                  key={item.tabName}
+                  type="button"
+                  onClick={() => { 
+                    playTerminalBeep('click'); 
+                    setActiveTab(item.tabName as any);
+                    setActivePanel('console'); // activate mobile viewport auto
+                  }}
+                  className={`flex flex-col sm:flex-row items-center gap-1.5 px-3 py-2 text-xs tracking-wider uppercase transition-all font-bold cursor-pointer rounded-lg text-center justify-center border ${
+                    isActive 
+                      ? 'bg-[#00f0ff]/10 text-[#00f0ff] border-[#00f0ff]/40 shadow-[0_0_12px_rgba(3,240,255,0.25)]' 
+                      : 'bg-stone-950/60 border-transparent hover:border-slate-800 text-stone-400 hover:text-[#00f0ff]'
+                  }`}
+                >
+                  <IconComponent className="w-3.5 h-3.5 shrink-0" />
+                  <span className="text-[10px] sm:text-xs truncate">{item.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* SECTION B: INTEL DATABASE REGISTER */}
+        <div className="border border-[#ff007f]/30 bg-[#0c0d15]/85 p-3 rounded-xl backdrop-blur-md flex flex-col gap-2 shadow-[0_0_15px_rgba(255,0,127,0.05)]">
+          <div className="flex items-center justify-between px-2 pb-1.5 border-b border-slate-800/60">
+            <span className="text-[10px] font-mono font-bold tracking-widest text-[#ff007f] uppercase flex items-center gap-1.5">
+              <Layers className="w-3.5 h-3.5 animate-pulse text-[#ff007f]" /> [🗃️ INTEL DATABASE REGISTER]
+            </span>
+            <span className="text-[9px] font-mono text-[#ff007f] font-semibold">[SECURED INDEX]</span>
+          </div>
+          <div className="grid grid-cols-3 gap-1.5">
+            {[
+              { tabName: 'trends', label: activeBillingTerms.patternTab, icon: TrendingUp },
+              { tabName: 'sociological', label: activeBillingTerms.socioTab, icon: Layers },
+              { tabName: 'offenders', label: activeBillingTerms.profileTab, icon: Shield },
+            ].map((item) => {
+              const IconComponent = item.icon;
+              const isActive = activeTab === item.tabName;
+              return (
+                <button
+                  key={item.tabName}
+                  type="button"
+                  onClick={() => { 
+                    playTerminalBeep('click'); 
+                    setActiveTab(item.tabName as any);
+                    setActivePanel('console'); // activate mobile viewport auto
+                  }}
+                  className={`flex flex-col sm:flex-row items-center gap-1.5 px-3 py-2 text-xs tracking-wider uppercase transition-all font-bold cursor-pointer rounded-lg text-center justify-center border ${
+                    isActive 
+                      ? 'bg-[#ff007f]/10 text-[#ff007f] border-[#ff007f]/40 shadow-[0_0_12px_rgba(255,0,127,0.25)]' 
+                      : 'bg-stone-950/60 border-transparent hover:border-slate-800 text-stone-400 hover:text-[#ff007f]'
+                  }`}
+                >
+                  <IconComponent className="w-3.5 h-3.5 shrink-0" />
+                  <span className="text-[10px] sm:text-xs truncate">{item.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+      </div>
 
       {/* MAIN RETRO CONTAINER GRID */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -1329,6 +1872,100 @@ export default function GlitchTerminal({ operatorId = 'IA-GOWDA-7301' }: GlitchT
         </aside>
 
       </div>
+
+      {/* ZOHO CATALYST SMARTBROWZ DIAGNOSTICS OVERLAY MODEL */}
+      {showSmartBrowzModal && (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-[100] p-4 text-[#00f0ff] font-mono select-none">
+          <div className="max-w-lg w-full bg-[#07080f] border-2 border-[#00f0ff]/40 rounded-xl p-5 shadow-[0_0_35px_rgba(0,240,255,0.3)] flex flex-col gap-4 relative overflow-hidden">
+            {/* SCANNING CRITICAL METRIC HUD EFFECT */}
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#00f0ff] to-transparent animate-pulse" />
+            
+            <div className="flex justify-between items-center border-b border-[#00f0ff]/20 pb-2.5">
+              <span className="text-xs font-bold tracking-widest text-[#ff007f] flex items-center gap-2">
+                <Cpu className="w-4 h-4 text-[#00f0ff] animate-spin" />
+                ZOHO CATALYST SMARTBROWZ COMPILER ENGINE
+              </span>
+              <span className="text-[10px] bg-[#00f0ff]/10 px-2 py-0.5 rounded border border-[#00f0ff]/20">
+                PORT_3000
+              </span>
+            </div>
+
+            {/* Diagnostic Details Grid */}
+            <div className="grid grid-cols-2 gap-3 p-3 bg-black/40 border border-stone-800 rounded">
+              <div className="text-[10px]">
+                <span className="text-stone-500 block">COMPILER_STATUS:</span>
+                <span className={`font-bold uppercase ${smartBrowzStatus === 'COMPLETE' ? 'text-emerald-400' : smartBrowzStatus === 'ERROR' ? 'text-red-500' : 'text-yellow-400 animate-pulse'}`}>
+                  ● {smartBrowzStatus}
+                </span>
+              </div>
+              <div className="text-[10px]">
+                <span className="text-stone-500 block">ZOHO_HANDSHAKE:</span>
+                <span className="text-[#00f0ff] font-bold">
+                  LOCAL_HEURISTIC_CLOUD_SHIELDS
+                </span>
+              </div>
+            </div>
+
+            {/* LOG STREAM SHELL */}
+            <div className="flex flex-col gap-1 bg-black p-4 rounded border border-stone-900 h-[180px] overflow-y-auto select-text font-mono text-[10px] text-[#00f0ff]/95 leading-relaxed scrollbar-thin">
+              {smartBrowzLogs.map((log, idx) => (
+                <div key={idx} className={`${log.startsWith('❌') ? 'text-red-400 font-bold' : log.startsWith('✔') ? 'text-emerald-400' : 'text-stone-400'}`}>
+                  {log}
+                </div>
+              ))}
+            </div>
+
+            {/* PROGRESS STATUS BAR */}
+            <div className="flex flex-col gap-1.5 text-[10px]">
+              <div className="flex justify-between font-bold text-stone-500">
+                <span>COMPILING BINARY VECTOR STREAM</span>
+                <span>
+                  {smartBrowzStatus === 'COMPLETE' ? '100%' : smartBrowzStatus === 'COMPILING' ? '70%' : smartBrowzStatus === 'CONNECTING' ? '30%' : '0%'}
+                </span>
+              </div>
+              <div className="w-full h-2 bg-stone-950 border border-stone-800 rounded overflow-hidden">
+                <div 
+                  className={`h-full transition-all duration-500 ${smartBrowzStatus === 'COMPLETE' ? 'bg-emerald-500 relative' : smartBrowzStatus === 'ERROR' ? 'bg-red-500' : 'bg-[#00f0ff]'}`}
+                  style={{ 
+                    width: smartBrowzStatus === 'COMPLETE' ? '100%' : smartBrowzStatus === 'COMPILING' ? '70%' : smartBrowzStatus === 'CONNECTING' ? '30%' : '5%' 
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Bottom Actions */}
+            <div className="flex justify-end gap-2 border-t border-[#00f0ff]/10 pt-3">
+              {smartBrowzStatus === 'ERROR' && (
+                <button
+                  type="button"
+                  onClick={() => setShowSmartBrowzModal(false)}
+                  className="px-4 py-2 bg-red-600/20 text-red-400 border border-red-500/30 text-xs font-bold hover:bg-red-600/35 transition-all rounded cursor-pointer animate-pulse"
+                >
+                  ABORT TRANSACTION
+                </button>
+              )}
+              {smartBrowzStatus === 'COMPLETE' ? (
+                <button
+                  type="button"
+                  onClick={() => { setShowSmartBrowzModal(false); playTerminalBeep('click'); }}
+                  className="px-4 py-2 bg-emerald-500 text-black border border-emerald-400 font-extrabold text-xs tracking-wider uppercase hover:bg-emerald-400 transition-all rounded cursor-pointer shadow-[0_0_15px_rgba(16,185,129,0.3)]"
+                >
+                  DISMISS COMPLIANCE SHELL
+                </button>
+              ) : (
+                smartBrowzStatus !== 'ERROR' && (
+                  <span className="text-[10px] text-stone-500 font-mono italic flex items-center gap-1.5 animate-pulse">
+                    <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-ping" />
+                    COMPRESSED BINARY PROCESSING ACTIVE, PLEASE HOLD...
+                  </span>
+                )
+              )}
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

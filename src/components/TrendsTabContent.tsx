@@ -79,6 +79,14 @@ export default function TrendsTabContent({
     };
   });
 
+  // District threat level data aligned to active forecasting multiplier
+  const districtsData = [
+    { district: lang === 'EN' ? "Bangalore City" : "ಬೆಂಗಳೂರು ನಗರ", risk: Math.round(88 * forecastingMultiplier), fill: '#ff007f' },
+    { district: lang === 'EN' ? "Hubballi-Dharwad" : "ಹುಬ್ಬಳ್ಳಿ-ಧಾರವಾಡ", risk: Math.round(52 * forecastingMultiplier), fill: '#00f0ff' },
+    { district: lang === 'EN' ? "Coastal Port" : "ಕರಾವಳಿ ವಲಯ", risk: Math.round(65 * forecastingMultiplier), fill: '#00f0ff' },
+    { district: lang === 'EN' ? "Mysuru Heritage" : "ಮೈಸೂರು ವಲಯ", risk: Math.round(41 * forecastingMultiplier), fill: '#10b981' },
+  ];
+
   // Custom tooltips styling for dark cyberpunk grid
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -425,12 +433,7 @@ export default function TrendsTabContent({
           <div className="w-full h-[180px] font-mono text-[9px] select-none my-1">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart 
-                data={[
-                  { district: lang === 'EN' ? "Bangalore City" : "ಬೆಂಗಳೂರು ನಗರ", risk: Math.round(88 * forecastingMultiplier), fill: '#ff007f' },
-                  { district: lang === 'EN' ? "Hubballi-Dharwad" : "ಹುಬ್ಬಳ್ಳಿ-ಧಾರವಾಡ", risk: Math.round(52 * forecastingMultiplier), fill: '#00f0ff' },
-                  { district: lang === 'EN' ? "Coastal Port" : "ಕರಾವಳಿ ವಲಯ", risk: Math.round(65 * forecastingMultiplier), fill: '#00f0ff' },
-                  { district: lang === 'EN' ? "Mysuru Heritage" : "ಮೈಸೂರು ವಲಯ", risk: Math.round(41 * forecastingMultiplier), fill: '#10b981' },
-                ]}
+                data={districtsData}
                 margin={{ top: 5, right: 10, left: -25, bottom: 0 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#1c1e2d" vertical={false} />
@@ -473,10 +476,8 @@ export default function TrendsTabContent({
                   radius={[6, 6, 0, 0]}
                   maxBarSize={32}
                 >
-                  {(entry, index) => {
-                    // Dynamic coloring for risk categories
-                    const val = Math.round((index === 0 ? 88 : index === 1 ? 52 : index === 2 ? 65 : 41) * forecastingMultiplier);
-                    const barColor = val > 120 ? '#ff007f' : val > 75 ? '#00f0ff' : '#10b981';
+                  {districtsData.map((entry, index) => {
+                    const barColor = entry.risk > 120 ? '#ff007f' : entry.risk > 75 ? '#00f0ff' : '#10b981';
                     return (
                       <Cell 
                         key={`cell-${index}`} 
@@ -484,7 +485,7 @@ export default function TrendsTabContent({
                         style={{ filter: `drop-shadow(0 0 6px ${barColor}50)` }}
                       />
                     );
-                  }}
+                  })}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
